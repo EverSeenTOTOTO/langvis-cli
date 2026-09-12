@@ -1,0 +1,21 @@
+{
+  "name": "@google/gemini-cli-core",
+  "version": "0.61.0-langvis",
+  "description": "langvis core-shell — replaces gemini-cli core with a thin shell over the langvis backend",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "node ../../scripts/build_package.js",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "zod": "3.25.76",
+    "proper-lockfile": "4.1.2"
+  }
+}
