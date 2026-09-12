@@ -33,28 +33,9 @@ execSync('node ./scripts/check-build-status.js', {
 });
 
 const nodeArgs = ['--no-warnings=DEP0040'];
-let sandboxCommand = undefined;
-try {
-  sandboxCommand = execSync('node scripts/sandbox_command.js', {
-    cwd: root,
-  })
-    .toString()
-    .trim();
-} catch {
-  // ignore
-}
-// if debugging is enabled and sandboxing is disabled, use --inspect-brk flag
-// note with sandboxing this flag is passed to the binary inside the sandbox
-// inside sandbox SANDBOX should be set and sandbox_command.js should fail
-const isInDebugMode = process.env.DEBUG === '1' || process.env.DEBUG === 'true';
 
-if (isInDebugMode && !sandboxCommand) {
-  if (process.env.SANDBOX) {
-    const port = process.env.DEBUG_PORT || '9229';
-    nodeArgs.push(`--inspect-brk=0.0.0.0:${port}`);
-  } else {
-    nodeArgs.push('--inspect-brk');
-  }
+if (process.env.DEBUG === '1' || process.env.DEBUG === 'true') {
+  nodeArgs.push('--inspect-brk');
 }
 
 nodeArgs.push(join(root, 'packages', 'cli'));

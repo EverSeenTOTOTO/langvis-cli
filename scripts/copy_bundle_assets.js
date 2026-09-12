@@ -37,35 +37,6 @@ for (const file of sbFiles) {
   copyFileSync(join(root, file), join(bundleDir, basename(file)));
 }
 
-// 2. Copy Policy definitions (.toml)
-const policyDir = join(bundleDir, 'policies');
-if (!existsSync(policyDir)) {
-  mkdirSync(policyDir);
-}
-
-// Locate policy files specifically in the core package
-const policyFiles = glob.sync('packages/core/src/policy/policies/*.toml', {
-  cwd: root,
-});
-
-for (const file of policyFiles) {
-  copyFileSync(join(root, file), join(policyDir, basename(file)));
-}
-
-console.log(`Copied ${policyFiles.length} policy files to bundle/policies/`);
-
-// Also copy policies to a2a-server dist directory for bundled execution
-const a2aPolicyDir = join(root, 'packages/a2a-server/dist/policies');
-if (!existsSync(a2aPolicyDir)) {
-  mkdirSync(a2aPolicyDir, { recursive: true });
-}
-for (const file of policyFiles) {
-  copyFileSync(join(root, file), join(a2aPolicyDir, basename(file)));
-}
-console.log(
-  `Copied ${policyFiles.length} policy files to packages/a2a-server/dist/policies/`,
-);
-
 // 3. Copy Documentation (docs/)
 const docsSrc = join(root, 'docs');
 const docsDest = join(bundleDir, 'docs');
@@ -74,31 +45,7 @@ if (existsSync(docsSrc)) {
   console.log('Copied docs to bundle/docs/');
 }
 
-// 4. Copy Built-in Skills (packages/core/src/skills/builtin)
-const builtinSkillsSrc = join(root, 'packages/core/src/skills/builtin');
-const builtinSkillsDest = join(bundleDir, 'builtin');
-if (existsSync(builtinSkillsSrc)) {
-  cpSync(builtinSkillsSrc, builtinSkillsDest, {
-    recursive: true,
-    dereference: true,
-  });
-  console.log('Copied built-in skills to bundle/builtin/');
-}
-
-// 5. Copy bundled chrome-devtools-mcp
-const bundleMcpSrc = join(root, 'packages/core/dist/bundled');
-const bundleMcpDest = join(bundleDir, 'bundled');
-if (!existsSync(bundleMcpSrc)) {
-  console.error(
-    `Error: chrome-devtools-mcp bundle not found at ${bundleMcpSrc}.\n` +
-      `Run "npm run bundle:browser-mcp -w @google/gemini-cli-core" first.`,
-  );
-  process.exit(1);
-}
-cpSync(bundleMcpSrc, bundleMcpDest, { recursive: true, dereference: true });
-console.log('Copied bundled chrome-devtools-mcp to bundle/bundled/');
-
-// 6. Copy Extension Examples
+// 4. Copy Extension Examples
 const extensionExamplesSrc = join(
   root,
   'packages/cli/src/commands/extensions/examples',
