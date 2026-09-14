@@ -74,6 +74,7 @@ describe('gemini.tsx unhandled rejection handler', () => {
   });
 
   it('should log unhandled promise rejections and open debug console on first error', async () => {
+    process.removeAllListeners('unhandledRejection');
     const appEventsMock = vi.mocked(appEvents);
     const debugLoggerErrorSpy = vi.spyOn(debugLogger, 'error');
     const rejectionError = new Error('Test unhandled rejection');
