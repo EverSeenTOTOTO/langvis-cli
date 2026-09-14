@@ -189,7 +189,7 @@ export default tseslint.config(
   },
   {
     // API Response Optionality enforcement for Code Assist
-    files: ['packages/core/src/code_assist/**/*.{ts,tsx}'],
+    files: ['packages/core-shell/src/code_assist/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-syntax': [
         'error',
@@ -239,7 +239,7 @@ export default tseslint.config(
     files: [
       '**/*.test.ts',
       '**/*.test.tsx',
-      'packages/core/src/utils/paths.ts',
+      'packages/core-shell/src/utils/paths.ts',
       'packages/test-utils/src/**/*.ts',
       'scripts/**/*.js',
     ],
@@ -249,7 +249,7 @@ export default tseslint.config(
   },
   {
     // Prevent self-imports in packages
-    files: ['packages/core/src/**/*.{ts,tsx}'],
+    files: ['packages/core-shell/src/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -328,7 +328,6 @@ export default tseslint.config(
       './scripts/**/*.js',
       'packages/*/scripts/**/*.js',
       'esbuild.config.js',
-      'packages/core/scripts/**/*.{js,mjs}',
     ],
     languageOptions: {
       globals: {
