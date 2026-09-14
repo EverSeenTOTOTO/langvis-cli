@@ -4,49 +4,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// 摘自 core/agent/legacy-agent-session.ts，langvis 关闭此能力：
-// LegacyAgentProtocol 占位——满足 AgentProtocol 接口与 AppContainer 装配；
-// 真正的 langvis 协议实现（SSE/HTTP 到 langvis 后端）在下一阶段接入。
+// UI 装配契约：AppContainer 以 LegacyAgentProtocol 之名实例化协议。
+// 真身在 langvis/（SSE run_events → AgentEvent 翻译），此处仅转发导出。
 
-import type {
-  AgentEvent,
-  AgentProtocol,
-  AgentSend,
-  ContentPart,
-  Unsubscribe,
-} from './types.js';
-import type { Config } from '../config/config.js';
+export {
+  LegacyAgentProtocol,
+  langvisClient,
+  setLangvisConversation,
+  getLangvisConversationId,
+} from '../langvis/agent-protocol.js';
 
-export class LegacyAgentProtocol implements AgentProtocol {
-  readonly events: readonly AgentEvent[] = [];
+import type { AgentEvent, ContentPart } from './types.js';
 
-  constructor(
-    private readonly opts: {
-      config: Config;
-      getPreferredEditor?: unknown;
-    },
-  ) {}
-
-  async send(_payload: AgentSend): Promise<{ streamId: string | null }> {
-    throw new Error('langvis protocol not wired yet');
-  }
-
-  subscribe(_callback: (event: AgentEvent) => void): Unsubscribe {
-    return () => {};
-  }
-
-  async abort(): Promise<void> {
-    void this.opts;
-  }
-
-  async requestElicitation(
-    _id: string,
-    _options: unknown,
-  ): Promise<Record<string, unknown>> {
-    throw new Error('langvis protocol not wired yet');
-  }
-}
-
+// 非 agent 路径的旧会话接口——langvis 下不可用，保留类型占位。
 export class LegacyAgentSession {
   constructor(..._args: unknown[]) {}
 
@@ -54,10 +24,12 @@ export class LegacyAgentSession {
     _prompt: ContentPart[],
     _abortSignal: AbortSignal,
   ): Promise<void> {
-    throw new Error('langvis protocol not wired yet');
+    throw new Error('legacy session is backend-owned in langvis');
   }
 
   async setHistory(..._args: unknown[]): Promise<void> {
-    throw new Error('langvis protocol not wired yet');
+    throw new Error('legacy session is backend-owned in langvis');
   }
 }
+
+export type { AgentEvent };

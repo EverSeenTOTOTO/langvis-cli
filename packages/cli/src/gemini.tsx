@@ -31,6 +31,7 @@ import {
   getProjectHash,
   loadConversationRecord,
   type MessageRecord,
+  getErrorMessage,
 } from '@google/gemini-cli-core';
 
 import { loadCliConfig, parseArguments } from './config/config.js';
@@ -69,6 +70,7 @@ import {
   initializeApp,
   type InitializationResult,
 } from './core/initializer.js';
+import { initializeLangvis } from './core/auth.js';
 import { appEvents, AppEvent } from './utils/events.js';
 import {
   RESUME_LATEST,
@@ -327,14 +329,6 @@ export async function startInteractiveUI(
   );
 }
 
-function printLangvisAuthPlaceholder() {
-  if (!process.env['LANGVIS_SERVER_URL']) {
-    writeToStderr(
-      'langvis auth: set LANGVIS_SERVER_URL to point at your langvis backend\n',
-    );
-  }
-}
-
 export async function main() {
   let config: Config | undefined;
   const cliStartupHandle = startupProfiler.start('cli_startup');
@@ -424,8 +418,18 @@ export async function main() {
     validateDnsResolutionOrder(settings.merged.advanced.dnsResolutionOrder),
   );
 
-  // langvis 占位：不进行 Google 认证，后端持有会话凭证。
-  printLangvisAuthPlaceholder();
+  // langvis：后端会话校验 + cwd conversation 绑定（cookies.json 持久登录）。
+  let langvisConversationId: string;
+  try {
+    langvisConversationId = await initializeLangvis();
+  } catch (e) {
+    writeToStderr(
+      `langvis: login required (${getErrorMessage(e)}).\n` +
+        `  set LANGVIS_SERVER_URL, and LANGVIS_EMAIL/LANGVIS_PASSWORD for first sign-in.\n`,
+    );
+    await runExitCleanup();
+    process.exit(ExitCodes.FATAL_INPUT_ERROR);
+  }
 
   const partialConfig = await loadCliConfig(settings.merged, sessionId, argv, {
     projectHooks: settings.workspace.settings.hooks,
@@ -504,6 +508,8 @@ export async function main() {
     const terminalHandle = startupProfiler.start('setup_terminal');
     await setupTerminalAndTheme(config, settings);
     terminalHandle?.end();
+
+    config.setSessionId(langvisConversationId);
 
     const initAppHandle = startupProfiler.start('initialize_app');
     const initializationResult = await initializeApp(config, settings);

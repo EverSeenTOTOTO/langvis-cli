@@ -71,3 +71,41 @@ export async function performInitialAuth(
 
   return { authError: null, accountSuspensionInfo: null };
 }
+
+// ─── langvis：后端会话校验 + cwd 会话绑定 ───
+
+import { basename } from 'node:path';
+import {
+  langvisClient,
+  setLangvisConversation,
+  LangvisNotLoggedInError,
+} from '@google/gemini-cli-core';
+
+/**
+ * 校验 langvis 登录（cookies.json 或 LANGVIS_EMAIL/PASSWORD 兜底），
+ * 然后把当前 cwd 绑定到一个 conversation（复用该 workspace 最新会话，否则新建）。
+ * 返回 conversationId 供 Config.setSessionId 对齐。
+ */
+export async function initializeLangvis(): Promise<string> {
+  try {
+    await langvisClient.requireSession();
+  } catch (e) {
+    if (!(e instanceof LangvisNotLoggedInError)) throw e;
+    const email = process.env['LANGVIS_EMAIL'];
+    const password = process.env['LANGVIS_PASSWORD'];
+    if (!email || !password) {
+      throw new LangvisNotLoggedInError();
+    }
+    await langvisClient.signIn(email, password);
+  }
+
+  const cwd = process.cwd();
+  const { conversations } = await langvisClient.listConversationsByWorkspace(
+    cwd,
+  );
+  const conversation =
+    conversations[0] ??
+    (await langvisClient.createConversation(basename(cwd) || cwd, cwd));
+  setLangvisConversation(conversation.id);
+  return conversation.id;
+}

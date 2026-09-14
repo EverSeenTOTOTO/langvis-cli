@@ -233,3 +233,20 @@ export * from './core/baseLlmClient.js';
 export * from './telemetry/telemetry-utils.js';
 export * from './utils/language-detection.js';
 export type { Content, Part, FunctionCall } from '@google/genai';
+
+// ─── langvis 接入面（装配层消费） ───
+export {
+  langvisClient,
+  setLangvisConversation,
+  getLangvisConversationId,
+} from './langvis/agent-protocol.js';
+export { LangvisClient, LangvisNotLoggedInError } from './langvis/client.js';
+export type {
+  LangvisConversation,
+  LangvisMessage,
+  LangvisSkill,
+  LangvisModel,
+  RunEvent as LangvisRunEvent,
+  EnrichedEvent as LangvisEnrichedEvent,
+  StreamFrame as LangvisStreamFrame,
+} from './langvis/types.js';
