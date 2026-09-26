@@ -222,14 +222,23 @@ export class LangvisClient {
     if (!Array.isArray(grouped)) return [];
     const out: LangvisModel[] = [];
     for (const g of grouped) {
-      const rec = asRecord(g);
-      const inner = rec?.['models'];
+      const group = asRecord(g);
+      const inner = group?.['models'];
       if (!Array.isArray(inner)) continue;
+      // 组名（providerName）在分组外层——下发到每个模型供展示
+      const groupName = group?.['providerName'] ?? group?.['providerId'];
+      const provider =
+        typeof groupName === 'string' ? groupName : undefined;
       for (const m of inner) {
-        if (typeof m === 'object' && m !== null) {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-          out.push(m as LangvisModel);
-        }
+        const rec = asRecord(m);
+        const id = rec?.['id'];
+        if (typeof id !== 'string') continue;
+        const name = rec?.['name'];
+        out.push({
+          id,
+          name: typeof name === 'string' ? name : undefined,
+          provider,
+        });
       }
     }
     return out;
