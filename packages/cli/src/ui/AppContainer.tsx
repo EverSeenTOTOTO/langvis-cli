@@ -1242,7 +1242,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
   // langvis AskUser：elicitation 请求直渲现成 AskUserDialog（无本地确认队列可走）。
   const elicitationDialog = useMemo(() => {
     if (!pendingElicitation) return null;
-    const { questions, keyAt } = schemaToQuestions(
+    const { questions, normalize } = schemaToQuestions(
       pendingElicitation.event.requestedSchema,
       pendingElicitation.event.message,
     );
@@ -1250,10 +1250,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
       <AskUserDialog
         questions={questions}
         onSubmit={(answers) => {
-          const keyed = Object.fromEntries(
-            Object.entries(answers).map(([i, v]) => [keyAt(Number(i)), v]),
-          );
-          submitElicitation(keyed);
+          submitElicitation(normalize(answers));
         }}
         onCancel={() => cancelElicitation()}
         width={terminalWidth}
