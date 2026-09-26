@@ -35,6 +35,7 @@ import {
   isHeadlessMode,
   Config,
   SimpleExtensionLoader,
+  getLangvisModelDefinitions,
   resolveToRealPath,
   applyAdminAllowlist,
   applyRequiredServers,
@@ -1107,7 +1108,11 @@ export async function loadCliConfig(
     acceptRawOutputRisk: argv.acceptRawOutputRisk,
     // langvis：模型集来自后端，恒走动态模型配置（ModelDialog 动态路径）
     dynamicModelConfiguration: true,
-    modelConfigServiceConfig: settings.modelConfigs,
+    // langvis：模型定义集来自后端（叠加保留 aliases/overrides 机制）
+    modelConfigServiceConfig: {
+      ...settings.modelConfigs,
+      modelDefinitions: getLangvisModelDefinitions(),
+    },
     // TODO: loading of hooks based on workspace trust
     enableHooks: settings.hooksConfig.enabled,
     enableHooksUI: settings.hooksConfig.enabled,
