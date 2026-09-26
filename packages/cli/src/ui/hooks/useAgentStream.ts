@@ -374,7 +374,7 @@ export const useAgentStream = ({
                   ? c
                   : Array.isArray(c)
                     ? (c as Part[])
-                    : [c as Part];
+                    : [c];
               return submitQuery(next, options);
             }
             // 'handled' / 'schedule_tool'（客户端工具调度不适用于后端执行模型）
