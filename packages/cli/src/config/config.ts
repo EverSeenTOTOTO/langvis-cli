@@ -9,11 +9,7 @@ import { hideBin } from 'yargs/helpers';
 import process from 'node:process';
 import * as path from 'node:path';
 import { execa } from 'execa';
-import { mcpCommand } from '../commands/mcp.js';
-import { extensionsCommand } from '../commands/extensions.js';
 import { skillsCommand } from '../commands/skills.js';
-import { hooksCommand } from '../commands/hooks.js';
-import { gemmaCommand } from '../commands/gemma.js';
 import {
   setGeminiMdFilename as setServerGeminiMdFilename,
   resetGeminiMdFilename,
@@ -68,12 +64,8 @@ import {
   createPolicyEngineConfig,
   resolveWorkspacePolicyState,
 } from './policy.js';
-import { ExtensionManager } from './extension-manager.js';
+import type { ExtensionManager } from './extension-manager.js';
 import { McpServerEnablementManager } from './mcp/mcpServerEnablement.js';
-import type { ExtensionEvents } from '@google/gemini-cli-core/src/utils/extensionLoader.js';
-import { requestConsentNonInteractive } from './extensions/consent.js';
-import { promptForSetting } from './extensions/extensionSettings.js';
-import type { EventEmitter } from 'node:stream';
 import { runExitCleanup } from '../utils/cleanup.js';
 
 export interface CliArgs {
@@ -182,13 +174,8 @@ export async function parseArguments(
       default: false,
     })
     .middleware((argv) => {
-      const commandModules = [
-        mcpCommand,
-        extensionsCommand,
-        skillsCommand,
-        hooksCommand,
-        gemmaCommand,
-      ];
+      // langvis 裁剪：CLI 子命令只剩 skills（mcp/extensions/hooks/gemma 已删）。
+      const commandModules = [skillsCommand];
 
       const subcommands = commandModules.flatMap((mod) => {
         const names: string[] = [];
@@ -273,11 +260,7 @@ export async function parseArguments(
       return true;
     });
 
-  yargsInstance.command(mcpCommand);
-  yargsInstance.command(extensionsCommand);
   yargsInstance.command(skillsCommand);
-  yargsInstance.command(hooksCommand);
-  yargsInstance.command(gemmaCommand);
 
   yargsInstance
     .command('$0 [query..]', 'Launch Gemini CLI', (yargsInstance) =>
@@ -590,7 +573,7 @@ export async function loadCliConfig(
   const {
     cwd = process.cwd(),
     projectHooks,
-    skipExtensions = false,
+    skipExtensions: _skipExtensions = false,
     loadedSettings,
   } = options;
   const debugMode = isDebugMode(argv);
@@ -661,24 +644,10 @@ export async function loadCliConfig(
     includeDirectories.push(...ideFolders);
   }
 
-  let extensionManager: ExtensionManager | undefined;
-  if (!skipExtensions) {
-    extensionManager = new ExtensionManager({
-      settings,
-      requestConsent: requestConsentNonInteractive,
-      requestSetting: promptForSetting,
-      workspaceDir: cwd,
-      enabledExtensionOverrides: argv.extensions,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-      eventEmitter: coreEvents as EventEmitter<ExtensionEvents>,
-      clientVersion: await getVersion(),
-    });
-    await extensionManager.loadExtensions();
-  }
+  // langvis 裁剪：extension 体系整体移除——不再发现/加载本地扩展。
+  const extensionManager = undefined as ExtensionManager | undefined;
 
-  const extensionPlanSettings = extensionManager
-    ?.getExtensions()
-    ?.find((ext) => ext.isActive && ext.plan?.directory)?.plan;
+  const extensionPlanSettings = undefined;
 
   let extensionRegistryURI =
     process.env['GEMINI_CLI_EXTENSION_REGISTRY_URI'] ??

@@ -25,7 +25,6 @@ import { editorCommand } from '../ui/commands/editorCommand.js';
 import { footerCommand } from '../ui/commands/footerCommand.js';
 import { helpCommand } from '../ui/commands/helpCommand.js';
 import { shortcutsCommand } from '../ui/commands/shortcutsCommand.js';
-import { mcpCommand } from '../ui/commands/mcpCommand.js';
 import { modelCommand } from '../ui/commands/modelCommand.js';
 import { quitCommand } from '../ui/commands/quitCommand.js';
 import { resumeCommand } from '../ui/commands/resumeCommand.js';
@@ -102,25 +101,6 @@ export class BuiltinCommandLoader implements ICommandLoader {
       helpCommand,
       footerCommand,
       shortcutsCommand,
-      ...(this.config?.getMcpEnabled() === false
-        ? [
-            {
-              name: 'mcp',
-              description:
-                'Manage configured Model Context Protocol (MCP) servers',
-              kind: CommandKind.BUILT_IN,
-              autoExecute: false,
-              subCommands: [],
-              action: async (
-                _context: CommandContext,
-              ): Promise<MessageActionReturn> => ({
-                type: 'message',
-                messageType: 'error',
-                content: getAdminErrorMessage('MCP', this.config ?? undefined),
-              }),
-            },
-          ]
-        : [mcpCommand]),
       modelCommand,
       quitCommand,
       {
