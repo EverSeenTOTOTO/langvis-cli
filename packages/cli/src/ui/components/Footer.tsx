@@ -72,22 +72,11 @@ interface SandboxIndicatorProps {
 const SandboxIndicator: React.FC<SandboxIndicatorProps> = ({
   isTrustedFolder,
 }) => {
-  const config = useConfig();
-  const sandboxEnabled = config.getSandboxEnabled();
+  // langvis：工具执行在服务端，本地沙箱概念不适用——仅保留目录信任指示。
   if (isTrustedFolder === false) {
     return <Text color={theme.status.warning}>untrusted</Text>;
   }
-
-  const sandbox = process.env['SANDBOX'];
-  if (sandbox) {
-    return <Text color={theme.status.warning}>current process</Text>;
-  }
-
-  if (sandboxEnabled) {
-    return <Text color={theme.status.warning}>all tools</Text>;
-  }
-
-  return <Text color={theme.status.error}>no sandbox</Text>;
+  return null;
 };
 
 const CorgiIndicator: React.FC = () => (

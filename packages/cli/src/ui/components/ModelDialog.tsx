@@ -370,11 +370,6 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
           <Text color={theme.text.secondary}> (Press Tab to toggle)</Text>
         </Box>
       </Box>
-      <Box flexDirection="column">
-        <Text color={theme.text.secondary}>
-          {'> To use a specific Gemini model on startup, use the --model flag.'}
-        </Text>
-      </Box>
       <ModelQuotaDisplay
         buckets={config?.getLastRetrievedQuota()?.buckets}
         availableWidth={terminalWidth - 2}
