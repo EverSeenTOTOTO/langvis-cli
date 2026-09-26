@@ -39,7 +39,7 @@ export interface AgentLoopContext {
   readonly messageBus: MessageBus;
 
   /** The client used to communicate with the LLM in this context. */
-  readonly geminiClient: GeminiClient | undefined;
+  readonly geminiClient: GeminiClient;
 
   /** The service used to prepare commands for sandboxed execution. */
   readonly sandboxManager: SandboxManager;

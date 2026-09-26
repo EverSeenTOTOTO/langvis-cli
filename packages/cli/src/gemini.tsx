@@ -34,6 +34,7 @@ import {
   getErrorMessage,
   AuthType,
 } from '@google/gemini-cli-core';
+import { SettingScope } from './config/settings.js';
 
 import { loadCliConfig, parseArguments } from './config/config.js';
 import * as cliConfig from './config/config.js';
@@ -429,7 +430,7 @@ export async function main() {
       settings.merged.security.auth.selectedType !== AuthType.LOGIN_WITH_GOOGLE
     ) {
       settings.setValue(
-        'user',
+        SettingScope.User,
         'security.auth.selectedType',
         AuthType.LOGIN_WITH_GOOGLE,
       );

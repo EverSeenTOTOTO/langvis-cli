@@ -19,7 +19,7 @@ import { MessageBus } from '../confirmation-bus/message-bus.js';
 import { PolicyEngine } from '../policy/policy-engine.js';
 import { ApprovalMode } from '../policy/types.js';
 import { coreEvents } from '../utils/events.js';
-import type { GeminiClient } from '../core/client.js';
+import { GeminiClient } from '../core/client.js';
 import type { BaseLlmClient } from '../core/baseLlmClient.js';
 import { ToolRegistry } from '../tools/tool-registry.js';
 import { PromptRegistry } from '../prompts/prompt-registry.js';
@@ -872,8 +872,9 @@ export class Config {
     this._messageBus = bus;
   }
 
-  get geminiClient(): GeminiClient | undefined {
-    // agent 路径下无本地 client；UI 消费面全部可选（config.getGeminiClient()?.…）
+  get geminiClient(): GeminiClient {
+    // agent 路径下无本地 client——惰性 GeminiClient 壳（no-op/空返回，legacy 专属方法才抛）
+    this._geminiClient ??= new GeminiClient(this);
     return this._geminiClient;
   }
 
@@ -1439,7 +1440,7 @@ export class Config {
     return false;
   }
 
-  getGeminiClient(): GeminiClient | undefined {
+  getGeminiClient(): GeminiClient {
     return this.geminiClient;
   }
 

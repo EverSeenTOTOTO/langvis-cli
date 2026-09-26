@@ -177,6 +177,7 @@ export const TriageIssues = ({
   const analyzeIssue = useCallback(
     async (issue: Issue): Promise<AnalysisResult> => {
       const client = config.getBaseLlmClient();
+      if (!client) return null;
       const prompt = `
 I am triaging GitHub issues for the Gemini CLI project. I need to identify issues that should be closed because they are:
 - Bogus (not a real issue/request)

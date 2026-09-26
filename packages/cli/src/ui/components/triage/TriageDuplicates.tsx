@@ -208,6 +208,7 @@ export const TriageDuplicates = ({
 
       // LLM Analysis
       const client = config.getBaseLlmClient();
+      if (!client) return null;
       const prompt = `
 I am triaging a GitHub issue labeled as 'possible-duplicate'. I need to decide if it should be marked as a duplicate of another issue, or if one of the other issues should be marked as a duplicate of this one.
 
