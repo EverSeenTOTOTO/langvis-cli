@@ -257,3 +257,4 @@ export {
   setLangvisConversationRecord,
   getLangvisCurrentModelId,
 } from './langvis/models.js';
+export { playLangvisAudio } from './langvis/audio.js';

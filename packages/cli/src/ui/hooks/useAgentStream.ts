@@ -21,6 +21,7 @@ import {
   type AgentProtocol,
   type Logger,
   type Part,
+  playLangvisAudio,
 } from '@google/gemini-cli-core';
 import type { PartListUnion } from '@google/genai';
 import type {
@@ -318,11 +319,21 @@ export const useAgentStream = ({
         case 'elicitation_request':
           setPendingElicitation({ event });
           break;
+        case 'custom':
+          // langvis TTS：audio custom 事件下载播放（fire-and-forget）
+          if (event.kind === 'audio') {
+            const data = event.data as { filePath?: unknown } | undefined;
+            if (typeof data?.filePath === 'string') {
+              void playLangvisAudio(data.filePath).catch((e: unknown) =>
+                debugLogger.warn('langvis audio playback failed', e),
+              );
+            }
+          }
+          break;
         case 'initialize':
         case 'session_update':
         case 'elicitation_response':
         case 'usage':
-        case 'custom':
           // These events are currently not handled in the UI
           break;
 
