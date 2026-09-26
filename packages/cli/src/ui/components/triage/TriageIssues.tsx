@@ -175,7 +175,7 @@ export const TriageIssues = ({
   }, [fetchIssues, initialLimit]);
 
   const analyzeIssue = useCallback(
-    async (issue: Issue): Promise<AnalysisResult> => {
+    async (issue: Issue): Promise<AnalysisResult | null> => {
       const client = config.getBaseLlmClient();
       if (!client) return null;
       const prompt = `
