@@ -1105,7 +1105,8 @@ export async function loadCliConfig(
     disableLLMCorrection: settings.tools?.disableLLMCorrection,
     rawOutput: argv.rawOutput,
     acceptRawOutputRisk: argv.acceptRawOutputRisk,
-    dynamicModelConfiguration: settings.experimental?.dynamicModelConfiguration,
+    // langvis：模型集来自后端，恒走动态模型配置（ModelDialog 动态路径）
+    dynamicModelConfiguration: true,
     modelConfigServiceConfig: settings.modelConfigs,
     // TODO: loading of hooks based on workspace trust
     enableHooks: settings.hooksConfig.enabled,
