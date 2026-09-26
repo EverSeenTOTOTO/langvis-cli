@@ -252,6 +252,7 @@ export type {
 } from './langvis/types.js';
 export {
   fetchAndCacheLangvisModels,
+  fetchAndCacheLangvisSkills,
   getLangvisModelDefinitions,
   setLangvisConversationRecord,
   getLangvisCurrentModelId,

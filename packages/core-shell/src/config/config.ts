@@ -91,6 +91,7 @@ import {
   getLangvisModelDefinitions,
   getLangvisConversationRecord,
   getLangvisCurrentModelId,
+  getLangvisSkills,
 } from '../langvis/models.js';
 import { langvisClient } from '../langvis/agent-protocol.js';
 import { getErrorMessage } from '../utils/errors.js';
@@ -1128,7 +1129,14 @@ export class Config {
   }
 
   getSkillManager(): SkillManager {
-    this.skillManager ??= new SkillManager();
+    if (!this.skillManager) {
+      this.skillManager = new SkillManager();
+      // langvis：后端 skills 预热注入（/skills 列表与补全数据源）
+      const langvisSkills = getLangvisSkills();
+      if (langvisSkills.length > 0) {
+        this.skillManager.addSkills(langvisSkills);
+      }
+    }
     return this.skillManager;
   }
 

@@ -78,6 +78,7 @@ import {
   langvisClient,
   setLangvisConversation,
   fetchAndCacheLangvisModels,
+  fetchAndCacheLangvisSkills,
   setLangvisConversationRecord,
   LangvisNotLoggedInError,
 } from '@google/gemini-cli-core';
@@ -110,7 +111,8 @@ export async function initializeLangvis(): Promise<string> {
     (await langvisClient.createConversation('New chat', cwd));
   setLangvisConversation(conversation.id);
   setLangvisConversationRecord(conversation);
-  // 预热模型定义集——ModelDialog 动态路径与 /model set 的数据源
+  // 预热模型定义集与 skills——ModelDialog 动态路径、/model set、/skills 的数据源
   await fetchAndCacheLangvisModels();
+  await fetchAndCacheLangvisSkills();
   return conversation.id;
 }

@@ -8,6 +8,7 @@
 
 import { debugLogger } from '../utils/debugLogger.js';
 import type { ModelDefinition } from '../services/modelConfigService.js';
+import type { SkillDefinition } from '../skills/skillLoader.js';
 import { langvisClient } from './agent-protocol.js';
 import type { LangvisConversation } from './types.js';
 
@@ -60,4 +61,27 @@ export function getLangvisCurrentModelId(): string | undefined {
       | undefined
   )?.model?.modelId;
   return typeof model === 'string' ? model : undefined;
+}
+
+// ─── skills 预热（/skills 列表数据源） ───
+
+let skillDefinitions: SkillDefinition[] = [];
+
+export async function fetchAndCacheLangvisSkills(): Promise<void> {
+  try {
+    const skills = await langvisClient.skills();
+    skillDefinitions = skills.map((s) => ({
+      name: s.id,
+      description: `${s.name} — ${s.description}`,
+      location: 'langvis',
+      body: '',
+    }));
+    debugLogger.log(`langvis skills cached: ${skillDefinitions.length}`);
+  } catch (e) {
+    debugLogger.warn('langvis skill fetch failed', e);
+  }
+}
+
+export function getLangvisSkills(): SkillDefinition[] {
+  return skillDefinitions;
 }
