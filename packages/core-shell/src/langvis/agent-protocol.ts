@@ -16,6 +16,7 @@ import type {
   Unsubscribe,
 } from '../agent/types.js';
 import { LangvisClient } from './client.js';
+import { getLangvisConversationRecord } from './models.js';
 import { LangvisSSE } from './sse.js';
 import type { EnrichedEvent, StreamFrame } from './types.js';
 
@@ -141,6 +142,7 @@ class LangvisSession {
         this.conversationId,
         text,
       );
+      this.maybeRenameConversation(text);
       return { streamId: messageId };
     }
     if (payload.action) {
@@ -153,6 +155,19 @@ class LangvisSession {
 
   async abort(): Promise<void> {
     await langvisClient.cancel(this.conversationId);
+  }
+
+  /** 占位名会话在首条消息后改为消息摘要（fire-and-forget，失败静默）。 */
+  private maybeRenameConversation(text: string): void {
+    const conversation = getLangvisConversationRecord();
+    if (!conversation || conversation.name !== 'New chat') return;
+    const name = text.trim().slice(0, 50) || 'New chat';
+    conversation.name = name;
+    void langvisClient
+      .updateConversation(conversation)
+      .catch((e: unknown) =>
+        debugLogger.warn('failed renaming conversation', e),
+      );
   }
 
   dispose(): void {

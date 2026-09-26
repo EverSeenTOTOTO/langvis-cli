@@ -5,13 +5,12 @@
  */
 
 import { useState, useCallback } from 'react';
-import type { HistoryItemWithoutId } from '../types.js';
-import path from 'node:path';
+import { MessageType, type HistoryItemWithoutId } from '../types.js';
 import {
   coreEvents,
-  convertSessionToClientHistory,
-  uiTelemetryService,
-  loadConversationRecord,
+  langvisClient,
+  setLangvisConversation,
+  setLangvisConversationRecord,
 } from '@google/gemini-cli-core';
 import type {
   HistoryTurn,
@@ -56,42 +55,37 @@ export const useSessionBrowser = (
     handleResumeSession: useCallback(
       async (session: SessionInfo) => {
         try {
-          const chatsDir = path.join(
-            config.storage.getProjectTempDir(),
-            'chats',
-          );
+          // langvis：会话在后端——重绑 conversation + 拉取消息重放 UI 历史。
+          const [conversationRecord, { messages }] = await Promise.all([
+            langvisClient.getConversation(session.id),
+            langvisClient.getMessages(session.id),
+          ]);
+          setLangvisConversation(session.id);
+          setLangvisConversationRecord(conversationRecord);
+          config.setSessionId(session.id);
 
-          const fileName = session.fileName;
-
-          const originalFilePath = path.join(chatsDir, fileName);
-
-          // Load up the conversation.
-          const conversation = await loadConversationRecord(originalFilePath);
-          if (!conversation) {
-            throw new Error(
-              `Failed to parse conversation from ${originalFilePath}`,
-            );
-          }
-
-          // Use the old session's ID to continue it.
-          const existingSessionId = conversation.sessionId;
-          config.setSessionId(existingSessionId);
-          uiTelemetryService.hydrate(conversation);
+          const uiHistory: HistoryItemWithoutId[] = messages
+            .filter((m) => m.content.trim().length > 0)
+            .map((m) => ({
+              type:
+                m.role === 'user' ? MessageType.USER : MessageType.GEMINI,
+              text: m.content,
+            }));
 
           const resumedSessionData = {
-            conversation,
-            filePath: originalFilePath,
+            conversation: {
+              sessionId: session.id,
+              messages: [],
+            },
+            filePath: session.id,
           };
 
-          // We've loaded it; tell the UI about it.
           setIsSessionBrowserOpen(false);
-          const historyData = convertSessionToHistoryFormats(
-            conversation.messages,
-          );
           await onLoadHistory(
-            historyData.uiHistory,
-            convertSessionToClientHistory(conversation.messages),
-            resumedSessionData,
+            uiHistory,
+            [],
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+            resumedSessionData as unknown as ResumedSessionData,
           );
         } catch (error) {
           coreEvents.emitFeedback('error', 'Error resuming session:', error);
@@ -106,23 +100,14 @@ export const useSessionBrowser = (
      */
     handleDeleteSession: useCallback(
       async (session: SessionInfo) => {
-        // Note: Chat sessions are stored on disk using a filename derived from
-        // the session, e.g. "session-<timestamp>-<sessionIdPrefix>.json".
-        // The ChatRecordingService.deleteSession API expects this file basename
-        // (without the ".json" extension), not the full session UUID.
         try {
-          const chatRecordingService = config
-            .getGeminiClient()
-            ?.getChatRecordingService();
-          if (chatRecordingService) {
-            await chatRecordingService.deleteSession(session.file);
-          }
+          await langvisClient.deleteConversation(session.id);
         } catch (error) {
           coreEvents.emitFeedback('error', 'Error deleting session:', error);
           throw error;
         }
       },
-      [config],
+      [],
     ),
   };
 };

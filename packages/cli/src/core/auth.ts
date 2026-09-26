@@ -74,7 +74,6 @@ export async function performInitialAuth(
 
 // ─── langvis：后端会话校验 + cwd 会话绑定 ───
 
-import { basename } from 'node:path';
 import {
   langvisClient,
   setLangvisConversation,
@@ -105,9 +104,10 @@ export async function initializeLangvis(): Promise<string> {
   const { conversations } = await langvisClient.listConversationsByWorkspace(
     cwd,
   );
+  // 新会话用占位名——首条消息后自动改为消息摘要（会话列表可读性）
   const conversation =
     conversations[0] ??
-    (await langvisClient.createConversation(basename(cwd) || cwd, cwd));
+    (await langvisClient.createConversation('New chat', cwd));
   setLangvisConversation(conversation.id);
   setLangvisConversationRecord(conversation);
   // 预热模型定义集——ModelDialog 动态路径与 /model set 的数据源

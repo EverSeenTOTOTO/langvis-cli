@@ -13,7 +13,8 @@ import {
   type ConversationRecord,
   type MessageRecord,
   loadConversationRecord,
-} from '@google/gemini-cli-core';
+
+  langvisClient,} from '@google/gemini-cli-core';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { stripUnsafeCharacters } from '../ui/utils/textUtils.js';
@@ -357,50 +358,38 @@ export const getAllSessionFiles = async (
  * Loads all valid session files from the chats directory and converts them to SessionInfo.
  * Corrupted files are automatically filtered out.
  */
+// langvis：会话存后端——数据源为当前 workspace 的 conversation 列表。
+// 保留原签名（chatsDir/options 被忽略），SessionBrowser/resume 命令的调用零改动。
 export const getSessionFiles = async (
-  chatsDir: string,
+  _chatsDir: string,
   currentSessionId?: string,
-  options: GetSessionOptions = {},
+  _options: GetSessionOptions = {},
 ): Promise<SessionInfo[]> => {
-  const allFiles = await getAllSessionFiles(
-    chatsDir,
-    currentSessionId,
-    options,
+  const { conversations } = await langvisClient.listConversationsByWorkspace(
+    process.cwd(),
   );
-
-  // Filter out corrupted files and extract SessionInfo
-  const validSessions = allFiles
-    .filter(
-      (entry): entry is { fileName: string; sessionInfo: SessionInfo } =>
-        entry.sessionInfo !== null,
-    )
-    .map((entry) => entry.sessionInfo);
-
-  // Deduplicate sessions by ID
-  const uniqueSessionsMap = new Map<string, SessionInfo>();
-  for (const session of validSessions) {
-    // If duplicate exists, keep the one with the later lastUpdated timestamp
-    if (
-      !uniqueSessionsMap.has(session.id) ||
-      new Date(session.lastUpdated).getTime() >
-        new Date(uniqueSessionsMap.get(session.id)!.lastUpdated).getTime()
-    ) {
-      uniqueSessionsMap.set(session.id, session);
-    }
-  }
-  const uniqueSessions = Array.from(uniqueSessionsMap.values());
+  const sessions: SessionInfo[] = conversations.map((c) => ({
+    id: c.id,
+    file: c.id,
+    fileName: c.id,
+    startTime: c.createdAt,
+    messageCount: 0,
+    lastUpdated: c.createdAt,
+    displayName: c.name,
+    firstUserMessage: c.name,
+    isCurrentSession: c.id === currentSessionId,
+    index: 0,
+  }));
 
   // Sort by startTime (oldest first) for stable session numbering
-  uniqueSessions.sort(
+  sessions.sort(
     (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
   );
-
-  // Set the correct 1-based indexes after sorting
-  uniqueSessions.forEach((session, index) => {
+  sessions.forEach((session, index) => {
     session.index = index + 1;
   });
 
-  return uniqueSessions;
+  return sessions;
 };
 
 /**

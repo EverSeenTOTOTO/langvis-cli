@@ -154,10 +154,22 @@ export class LangvisClient {
     );
   }
 
+  async getConversation(
+    conversationId: string,
+  ): Promise<LangvisConversation> {
+    return this.request(`/api/conversation/${conversationId}`);
+  }
+
   async getMessages(
     conversationId: string,
   ): Promise<{ messages: LangvisMessage[] }> {
     return this.request(`/api/conversation/${conversationId}/messages`);
+  }
+
+  async deleteConversation(conversationId: string): Promise<void> {
+    await this.request(`/api/conversation/${conversationId}`, {
+      method: 'DELETE',
+    });
   }
 
   /** 全量更新 conversation（PUT；name+config 必填）。 */
