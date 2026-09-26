@@ -268,6 +268,7 @@ Return a JSON object with:
       issuesToAnalyze.forEach(async (issue) => {
         try {
           const result = await analyzeIssue(issue);
+          if (!result) return;
           setState((prev) => {
             const nextCache = new Map(prev.analysisCache);
             nextCache.set(issue.number, result);
