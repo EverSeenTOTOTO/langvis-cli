@@ -50,6 +50,7 @@ export interface LangvisConversation {
   id: string;
   name: string;
   config: Record<string, unknown>;
+  groupId?: string | null;
   workspacePath?: string | null;
   createdAt: string;
 }

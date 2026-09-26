@@ -250,3 +250,9 @@ export type {
   EnrichedEvent as LangvisEnrichedEvent,
   StreamFrame as LangvisStreamFrame,
 } from './langvis/types.js';
+export {
+  fetchAndCacheLangvisModels,
+  getLangvisModelDefinitions,
+  setLangvisConversationRecord,
+  getLangvisCurrentModelId,
+} from './langvis/models.js';

@@ -87,6 +87,13 @@ import type {
   ContentGenerator,
 } from '../core/contentGenerator.js';
 import { ModelAvailabilityService } from '../availability/modelAvailabilityService.js';
+import {
+  getLangvisModelDefinitions,
+  getLangvisConversationRecord,
+  getLangvisCurrentModelId,
+} from '../langvis/models.js';
+import { langvisClient } from '../langvis/agent-protocol.js';
+import { getErrorMessage } from '../utils/errors.js';
 import type { EnvironmentSanitizationConfig } from '../services/environmentSanitization.js';
 import {
   DEFAULT_FILE_FILTERING_OPTIONS,
@@ -704,8 +711,9 @@ export class Config {
     this.worktreeSettings = params.worktreeSettings;
     this.workspaceContext = new WorkspaceContext(params.targetDir, []);
 
-    this.model = params.model;
-    this._activeModel = params.model;
+    // 初始模型：params.model → 绑定的 conversation config → 后端默认
+    this.model = params.model ?? getLangvisCurrentModelId();
+    this._activeModel = this.model;
     this.maxSessionTurns = params.maxSessionTurns ?? DEFAULT_MAX_SESSION_TURNS;
     this.approvalMode =
       params.approvalMode ??
@@ -748,7 +756,8 @@ export class Config {
     this.disableAlwaysAllow = params.disableAlwaysAllow ?? false;
     this.rawOutput = params.rawOutput ?? false;
     this.acceptRawOutputRisk = params.acceptRawOutputRisk ?? false;
-    this.dynamicModelConfiguration = params.dynamicModelConfiguration ?? false;
+    // langvis 恒走动态模型配置——ModelDialog 从 modelDefinitions（后端模型集）取列表。
+    this.dynamicModelConfiguration = params.dynamicModelConfiguration ?? true;
     this.fileFiltering = {
       respectGitIgnore: params.fileFiltering?.respectGitIgnore ?? true,
       respectGeminiIgnore: params.fileFiltering?.respectGeminiIgnore ?? true,
@@ -807,7 +816,9 @@ export class Config {
     this.storage = new Storage(this.targetDir);
     this.injectionService = new InjectionService(() => false);
     this.modelConfigService = new ModelConfigService(
-      params.modelConfigServiceConfig ?? {},
+      params.modelConfigServiceConfig ?? {
+        modelDefinitions: getLangvisModelDefinitions(),
+      },
     );
     this.modelAvailabilityService = new ModelAvailabilityService();
     this.fileExclusions = new FileExclusions(this);
@@ -971,6 +982,21 @@ export class Config {
     this._activeModel = newModel;
     this.onModelChange?.(newModel);
     coreEvents.emitModelChanged(newModel);
+    // 落后端：conversation config.model.modelId 全量 PUT（fire-and-forget）
+    const conversation = getLangvisConversationRecord();
+    if (conversation) {
+      const merged = {
+        ...conversation.config,
+        model: { ...(conversation.config as { model?: object }).model, modelId: newModel },
+      };
+      conversation.config = merged;
+      void langvisClient.updateConversation(conversation).catch((e: unknown) => {
+        coreEvents.emitFeedback(
+          'warning',
+          `langvis: failed persisting model selection: ${getErrorMessage(e)}`,
+        );
+      });
+    }
   }
 
   activateFallbackMode(model: string, _failedModel?: string): void {

@@ -160,6 +160,21 @@ export class LangvisClient {
     return this.request(`/api/conversation/${conversationId}/messages`);
   }
 
+  /** 全量更新 conversation（PUT；name+config 必填）。 */
+  async updateConversation(
+    conversation: LangvisConversation,
+  ): Promise<void> {
+    await this.request(`/api/conversation/${conversation.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        id: conversation.id,
+        name: conversation.name,
+        config: conversation.config,
+        groupId: conversation.groupId ?? null,
+      }),
+    });
+  }
+
   // ── chat ──
 
   /** 发消息启动 run，返回 assistant messageId（即事件流 streamId）。 */

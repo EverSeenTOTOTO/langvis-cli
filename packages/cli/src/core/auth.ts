@@ -78,6 +78,8 @@ import { basename } from 'node:path';
 import {
   langvisClient,
   setLangvisConversation,
+  fetchAndCacheLangvisModels,
+  setLangvisConversationRecord,
   LangvisNotLoggedInError,
 } from '@google/gemini-cli-core';
 
@@ -107,5 +109,8 @@ export async function initializeLangvis(): Promise<string> {
     conversations[0] ??
     (await langvisClient.createConversation(basename(cwd) || cwd, cwd));
   setLangvisConversation(conversation.id);
+  setLangvisConversationRecord(conversation);
+  // 预热模型定义集——ModelDialog 动态路径与 /model set 的数据源
+  await fetchAndCacheLangvisModels();
   return conversation.id;
 }
