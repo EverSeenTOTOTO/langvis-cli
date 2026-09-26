@@ -32,6 +32,7 @@ import {
   loadConversationRecord,
   type MessageRecord,
   getErrorMessage,
+  AuthType,
 } from '@google/gemini-cli-core';
 
 import { loadCliConfig, parseArguments } from './config/config.js';
@@ -422,6 +423,17 @@ export async function main() {
   let langvisConversationId: string;
   try {
     langvisConversationId = await initializeLangvis();
+    // langvis 认证由后端持有——占用 selectedType 槽位让 UI 状态机直达 Authenticated，
+    // 跳过 Google 认证选择框（validate/refreshAuth 在壳里均为直通）。
+    if (
+      settings.merged.security.auth.selectedType !== AuthType.LOGIN_WITH_GOOGLE
+    ) {
+      settings.setValue(
+        'user',
+        'security.auth.selectedType',
+        AuthType.LOGIN_WITH_GOOGLE,
+      );
+    }
   } catch (e) {
     writeToStderr(
       `langvis: login required (${getErrorMessage(e)}).\n` +
