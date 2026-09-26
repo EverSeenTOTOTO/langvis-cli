@@ -22,12 +22,15 @@ import {
   type Logger,
   type Part,
 } from '@google/gemini-cli-core';
+import type { PartListUnion } from '@google/genai';
 import type {
   HistoryItemWithoutId,
   LoopDetectionConfirmationRequest,
   IndividualToolCallDisplay,
   HistoryItemToolDisplayGroup,
+  SlashCommandProcessorResult,
 } from '../types.js';
+import { isSlashCommand } from '../utils/commandUtils.js';
 import { StreamingState, MessageType } from '../types.js';
 import { findLastSafeSplitPoint } from '../utils/markdownUtilities.js';
 import { getToolGroupBorderAppearance } from '../utils/borderStyles.js';
@@ -47,6 +50,9 @@ export interface UseAgentStreamOptions {
   ) => void;
   isShellFocused?: boolean;
   logger?: Logger | null;
+  handleSlashCommand?: (
+    query: string,
+  ) => Promise<SlashCommandProcessorResult | false>;
 }
 
 /**
@@ -59,6 +65,7 @@ export const useAgentStream = ({
   onCancelSubmit,
   isShellFocused,
   logger,
+  handleSlashCommand,
 }: UseAgentStreamOptions) => {
   const [initError] = useState<string | null>(null);
   const [retryStatus] = useState<RetryAttemptPayload | null>(null);
@@ -354,6 +361,29 @@ export const useAgentStream = ({
     ) => {
       if (!agent) return;
 
+      // Slash commands are handled before anything is sent to the agent.
+      if (!options?.isContinuation && typeof query === 'string') {
+        const trimmed = query.trim();
+        if (isSlashCommand(trimmed) && handleSlashCommand) {
+          const result = await handleSlashCommand(trimmed);
+          if (result) {
+            if (result.type === 'submit_prompt') {
+              const c: PartListUnion = result.content;
+              const next: Part[] | string =
+                typeof c === 'string'
+                  ? c
+                  : Array.isArray(c)
+                    ? (c as Part[])
+                    : [c as Part];
+              return submitQuery(next, options);
+            }
+            // 'handled' / 'schedule_tool'（客户端工具调度不适用于后端执行模型）
+            return;
+          }
+          // 未识别的命令原样发送（与 legacy 行为一致，后端/模型自行解读）
+        }
+      }
+
       const timestamp = Date.now();
       setLastOutputTime(timestamp);
       userMessageTimestampRef.current = timestamp;
@@ -384,7 +414,7 @@ export const useAgentStream = ({
         );
       }
     },
-    [agent, addItem, logger, startNewPrompt],
+    [agent, addItem, logger, startNewPrompt, handleSlashCommand],
   );
 
   useEffect(() => {
