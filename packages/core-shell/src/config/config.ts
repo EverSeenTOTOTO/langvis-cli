@@ -24,8 +24,8 @@ import type { BaseLlmClient } from '../core/baseLlmClient.js';
 import { ToolRegistry } from '../tools/tool-registry.js';
 import { PromptRegistry } from '../prompts/prompt-registry.js';
 import { ResourceRegistry } from '../resources/resource-registry.js';
-import type { AgentRegistry } from '../agents/registry.js';
-import type { SkillManager } from '../skills/skillManager.js';
+import { AgentRegistry } from '../agents/registry.js';
+import { SkillManager } from '../skills/skillManager.js';
 import type { HookSystem } from '../hooks/hookSystem.js';
 import type { McpClientManager } from '../tools/mcp-client-manager.js';
 import { FileDiscoveryService } from '../services/fileDiscoveryService.js';
@@ -872,10 +872,8 @@ export class Config {
     this._messageBus = bus;
   }
 
-  get geminiClient(): GeminiClient {
-    if (!this._geminiClient) {
-      throw new Error('langvis: gemini client is backend-owned');
-    }
+  get geminiClient(): GeminiClient | undefined {
+    // agent 路径下无本地 client；UI 消费面全部可选（config.getGeminiClient()?.…）
     return this._geminiClient;
   }
 
@@ -1090,9 +1088,7 @@ export class Config {
   }
 
   getAgentRegistry(): AgentRegistry {
-    if (!this.agentRegistry) {
-      throw new Error('langvis: agent registry is backend-owned');
-    }
+    this.agentRegistry ??= new AgentRegistry(this);
     return this.agentRegistry;
   }
 
@@ -1105,9 +1101,7 @@ export class Config {
   }
 
   getSkillManager(): SkillManager {
-    if (!this.skillManager) {
-      throw new Error('langvis: skill manager is backend-owned');
-    }
+    this.skillManager ??= new SkillManager();
     return this.skillManager;
   }
 
@@ -1445,7 +1439,7 @@ export class Config {
     return false;
   }
 
-  getGeminiClient(): GeminiClient {
+  getGeminiClient(): GeminiClient | undefined {
     return this.geminiClient;
   }
 
@@ -1732,10 +1726,7 @@ export class Config {
     return undefined;
   }
 
-  getBaseLlmClient(): BaseLlmClient {
-    if (!this._baseLlmClient) {
-      throw new Error('langvis: llm client is backend-owned');
-    }
+  getBaseLlmClient(): BaseLlmClient | undefined {
     return this._baseLlmClient;
   }
 
@@ -1905,7 +1896,7 @@ export class Config {
   }
 
   async createToolRegistry(): Promise<ToolRegistry> {
-    throw new Error('langvis: tool registry is backend-owned');
+    return this.toolRegistry;
   }
 
   getHookSystem(): HookSystem | undefined {
