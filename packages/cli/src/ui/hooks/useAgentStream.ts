@@ -55,6 +55,11 @@ export interface UseAgentStreamOptions {
   ) => Promise<SlashCommandProcessorResult | false>;
 }
 
+/** 后端 elicitation（AskUser）的待答事实——事件整体保留（提交需 _meta.runId）。 */
+export interface PendingElicitation {
+  event: AgentEvent<'elicitation_request'>;
+}
+
 /**
  * useAgentStream implements the interactive agent loop using an AgentProtocol.
  * It is completely agnostic to the specific agent implementation.
@@ -68,6 +73,8 @@ export const useAgentStream = ({
   handleSlashCommand,
 }: UseAgentStreamOptions) => {
   const [initError] = useState<string | null>(null);
+  const [pendingElicitation, setPendingElicitation] =
+    useState<PendingElicitation | null>(null);
   const [retryStatus] = useState<RetryAttemptPayload | null>(null);
   const [streamingState, setStreamingState] = useState<StreamingState>(
     StreamingState.Idle,
@@ -162,6 +169,7 @@ export const useAgentStream = ({
         case 'agent_end':
           setStreamingState(StreamingState.Idle);
           flushPendingText();
+          setPendingElicitation(null);
           break;
         case 'message':
           if (event.role === 'agent') {
@@ -307,9 +315,11 @@ export const useAgentStream = ({
           break;
         }
 
+        case 'elicitation_request':
+          setPendingElicitation({ event });
+          break;
         case 'initialize':
         case 'session_update':
-        case 'elicitation_request':
         case 'elicitation_response':
         case 'usage':
         case 'custom':
@@ -372,9 +382,9 @@ export const useAgentStream = ({
               const next: Part[] | string =
                 typeof c === 'string'
                   ? c
-                  : Array.isArray(c)
-                    ? (c as Part[])
-                    : [c];
+                  : [c].flat().filter(
+                      (p): p is Part => typeof p === 'object' && p !== null,
+                    );
               return submitQuery(next, options);
             }
             // 'handled' / 'schedule_tool'（客户端工具调度不适用于后端执行模型）
@@ -599,9 +609,61 @@ export const useAgentStream = ({
     [pendingHistoryItem, pendingToolGroupItems],
   );
 
+  const submitElicitation = useCallback(
+    (content: Record<string, unknown>) => {
+      if (!pendingElicitation || !agent) return;
+      const e = pendingElicitation.event;
+      setPendingElicitation(null);
+      void agent
+        .send({
+          elicitations: [
+            {
+              requestId: e.requestId,
+              action: 'accept',
+              content,
+              _meta: e._meta,
+            },
+          ],
+        })
+        .catch((err: unknown) => {
+          addItem(
+            {
+              type: MessageType.ERROR,
+              text: `Failed to submit answer: ${getErrorMessage(err)}`,
+            },
+            Date.now(),
+          );
+        });
+    },
+    [agent, addItem, pendingElicitation],
+  );
+
+  const cancelElicitation = useCallback(() => {
+    if (!pendingElicitation || !agent) return;
+    const e = pendingElicitation.event;
+    setPendingElicitation(null);
+    void agent
+      .send({
+        elicitations: [
+          {
+            requestId: e.requestId,
+            action: 'cancel',
+            content: {},
+            _meta: e._meta,
+          },
+        ],
+      })
+      .catch(() => {
+        // 取消失败不打扰——后端超时自兜底
+      });
+  }, [agent, pendingElicitation]);
+
   return {
     streamingState,
     submitQuery,
+    pendingElicitation,
+    submitElicitation,
+    cancelElicitation,
     initError,
     pendingHistoryItems,
     thought,

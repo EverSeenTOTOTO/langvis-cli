@@ -207,6 +207,8 @@ import {
 import { useKeyMatchers } from './hooks/useKeyMatchers.js';
 
 import { InputContext } from './contexts/InputContext.js';
+import { schemaToQuestions } from './utils/schemaToQuestions.js';
+import { AskUserDialog } from './components/AskUserDialog.js';
 
 /**
  * The fraction of the terminal width to allocate to the shell.
@@ -1220,6 +1222,9 @@ Logging in with Google... Restarting Gemini CLI to continue.
     pendingHistoryItems: pendingGeminiHistoryItems,
     thought,
     cancelOngoingRequest,
+    pendingElicitation,
+    submitElicitation,
+    cancelElicitation,
     pendingToolCalls,
     handleApprovalModeChange,
     activePtyId,
@@ -1233,6 +1238,33 @@ Logging in with Google... Restarting Gemini CLI to continue.
     dismissBackgroundTask,
     retryStatus,
   } = activeStream;
+
+  // langvis AskUser：elicitation 请求直渲现成 AskUserDialog（无本地确认队列可走）。
+  const elicitationDialog = useMemo(() => {
+    if (!pendingElicitation) return null;
+    const { questions, keyAt } = schemaToQuestions(
+      pendingElicitation.event.requestedSchema,
+      pendingElicitation.event.message,
+    );
+    return (
+      <AskUserDialog
+        questions={questions}
+        onSubmit={(answers) => {
+          const keyed = Object.fromEntries(
+            Object.entries(answers).map(([i, v]) => [keyAt(Number(i)), v]),
+          );
+          submitElicitation(keyed);
+        }}
+        onCancel={() => cancelElicitation()}
+        width={terminalWidth}
+      />
+    );
+  }, [
+    pendingElicitation,
+    submitElicitation,
+    cancelElicitation,
+    terminalWidth,
+  ]);
 
   const pendingHistoryItems = useMemo(
     () => [...pendingSlashCommandHistoryItems, ...pendingGeminiHistoryItems],
@@ -2530,7 +2562,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
       isBackgroundTaskVisible,
       embeddedShellFocused,
       showDebugProfiler,
-      customDialog,
+      customDialog: customDialog ?? elicitationDialog,
       transientMessage,
       bannerData,
       bannerVisible,
@@ -2659,8 +2691,9 @@ Logging in with Google... Restarting Gemini CLI to continue.
       activeBackgroundTaskPid,
       backgroundTasks,
       adminSettingsChanged,
-      newAgents,
       showIsExpandableHint,
+      elicitationDialog,
+      newAgents,
     ],
   );
 

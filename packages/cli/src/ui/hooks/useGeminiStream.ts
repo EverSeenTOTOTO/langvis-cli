@@ -2279,6 +2279,9 @@ export const useGeminiStream = (
   return {
     streamingState,
     submitQuery,
+    pendingElicitation: undefined,
+    submitElicitation: undefined,
+    cancelElicitation: undefined,
     initError,
     pendingHistoryItems,
     thought,
