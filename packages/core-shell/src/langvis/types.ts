@@ -75,3 +75,10 @@ export interface LangvisModel {
   name?: string;
   provider?: string;
 }
+
+/** turn-start workspace 快照（rewind 数据面）；messageId=assistant 消息 id。 */
+export interface LangvisCheckpoint {
+  messageId: string;
+  createdAt: string;
+  userPreview: string;
+}

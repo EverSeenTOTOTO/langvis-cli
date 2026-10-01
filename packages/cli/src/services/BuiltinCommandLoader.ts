@@ -27,6 +27,7 @@ import { helpCommand } from '../ui/commands/helpCommand.js';
 import { shortcutsCommand } from '../ui/commands/shortcutsCommand.js';
 import { modelCommand } from '../ui/commands/modelCommand.js';
 import { quitCommand } from '../ui/commands/quitCommand.js';
+import { rewindCommand } from '../ui/commands/rewindCommand.js';
 import { resumeCommand } from '../ui/commands/resumeCommand.js';
 import { themeCommand } from '../ui/commands/themeCommand.js';
 import { skillsCommand } from '../ui/commands/skillsCommand.js';
@@ -103,6 +104,7 @@ export class BuiltinCommandLoader implements ICommandLoader {
       shortcutsCommand,
       modelCommand,
       quitCommand,
+      rewindCommand,
       {
         ...resumeCommand,
         subCommands: addDebugToChatResumeSubCommands(resumeCommand.subCommands),

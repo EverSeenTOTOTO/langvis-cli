@@ -12,14 +12,16 @@ import { dirname, join } from 'node:path';
 import { GEMINI_DIR, homedir } from '../utils/paths.js';
 import { debugLogger } from '../utils/debugLogger.js';
 import type {
+  LangvisCheckpoint,
   LangvisConversation,
   LangvisMessage,
   LangvisModel,
   LangvisSkill,
 } from './types.js';
 
-const serverBase = (process.env['LANGVIS_SERVER_URL'] ?? 'http://localhost:3000')
-  .replace(/\/+$/, '');
+const serverBase = (
+  process.env['LANGVIS_SERVER_URL'] ?? 'http://localhost:3000'
+).replace(/\/+$/, '');
 
 const cookieStorePath = join(homedir(), GEMINI_DIR, 'cookies.json');
 
@@ -124,7 +126,9 @@ export class LangvisClient {
     if (resp.status === 401) throw new LangvisNotLoggedInError();
     if (!resp.ok) {
       const errBody = await resp.text().catch(() => '');
-      throw new Error(`langvis ${resp.status} ${path}: ${errBody.slice(0, 300)}`);
+      throw new Error(
+        `langvis ${resp.status} ${path}: ${errBody.slice(0, 300)}`,
+      );
     }
     const text = await resp.text();
     // 空响应体（204/void 端点）落为 null 而非 undefined——保持泛型直通
@@ -169,9 +173,7 @@ export class LangvisClient {
     );
   }
 
-  async getConversation(
-    conversationId: string,
-  ): Promise<LangvisConversation> {
+  async getConversation(conversationId: string): Promise<LangvisConversation> {
     return this.request(`/api/conversation/${conversationId}`);
   }
 
@@ -215,10 +217,41 @@ export class LangvisClient {
     });
   }
 
+  // ── checkpoints (rewind) ──
+
+  /** turn-start workspace 快照列表（新到旧）。 */
+  async listCheckpoints(conversationId: string): Promise<LangvisCheckpoint[]> {
+    const resp = await this.request<unknown>(
+      `/api/conversation/${conversationId}/checkpoints`,
+    );
+    const rec = asRecord(resp);
+    const list = rec?.['checkpoints'];
+    if (!Array.isArray(list)) return [];
+    const out: LangvisCheckpoint[] = [];
+    for (const c of list) {
+      const r = asRecord(c);
+      const messageId = r?.['messageId'];
+      if (typeof messageId !== 'string') continue;
+      out.push({
+        messageId,
+        createdAt: typeof r?.['createdAt'] === 'string' ? r['createdAt'] : '',
+        userPreview:
+          typeof r?.['userPreview'] === 'string' ? r['userPreview'] : '',
+      });
+    }
+    return out;
+  }
+
+  /** 恢复 workspace 到该 turn 前的快照（会话历史不动）。 */
+  async rewind(conversationId: string, messageId: string): Promise<void> {
+    await this.request(
+      `/api/conversation/${conversationId}/rewind/${messageId}`,
+      { method: 'POST' },
+    );
+  }
+
   /** 全量更新 conversation（PUT；name+config 必填）。 */
-  async updateConversation(
-    conversation: LangvisConversation,
-  ): Promise<void> {
+  async updateConversation(conversation: LangvisConversation): Promise<void> {
     await this.request(`/api/conversation/${conversation.id}`, {
       method: 'PUT',
       body: JSON.stringify({
@@ -290,8 +323,7 @@ export class LangvisClient {
       if (!Array.isArray(inner)) continue;
       // 组名（providerName）在分组外层——下发到每个模型供展示
       const groupName = group?.['providerName'] ?? group?.['providerId'];
-      const provider =
-        typeof groupName === 'string' ? groupName : undefined;
+      const provider = typeof groupName === 'string' ? groupName : undefined;
       for (const m of inner) {
         const rec = asRecord(m);
         const id = rec?.['id'];
@@ -317,10 +349,7 @@ export class LangvisClient {
   }
 
   /** 认证态的裸 fetch（SSE 流用——需要拿到 body stream 而非 JSON）。 */
-  async authedFetch(
-    path: string,
-    init?: RequestInit,
-  ): Promise<Response> {
+  async authedFetch(path: string, init?: RequestInit): Promise<Response> {
     const fetchFn = await this.ensureFetch();
     const resp = await fetchFn(`${serverBase}${path}`, {
       method: init?.method,
