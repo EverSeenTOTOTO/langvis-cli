@@ -11,6 +11,9 @@ import { useSettings } from '../contexts/SettingsContext.js';
 import { useConfig } from '../contexts/ConfigContext.js';
 import { useUIState } from '../contexts/UIStateContext.js';
 import { Banner } from './Banner.js';
+
+// fork 基线：上游 gemini-cli 的版本（fork 时 HEAD），标注血统用。
+const UPSTREAM_VERSION = '0.61.0-nightly.20260908.gc647533d6';
 import { useBanner } from '../hooks/useBanner.js';
 import { useTips } from '../hooks/useTips.js';
 import { theme } from '../semantic-colors.js';
@@ -115,6 +118,10 @@ export const AppHeader = ({ version, showDetails = true }: AppHeaderProps) => {
           langvis
         </Text>
         <Text color={theme.text.secondary}> v{version}</Text>
+        <Text color={theme.text.secondary}>
+          {' '}
+          (fork of gemini-cli v{UPSTREAM_VERSION})
+        </Text>
         {updateInfo?.isUpdating && (
           <Box marginLeft={2}>
             <Text color={theme.text.secondary}>
