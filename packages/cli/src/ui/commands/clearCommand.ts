@@ -10,6 +10,9 @@ import {
   SessionStartSource,
   flushTelemetry,
   resetBrowserSession,
+  langvisClient,
+  setLangvisConversation,
+  setLangvisConversationRecord,
 } from '@google/gemini-cli-core';
 import { CommandKind, type SlashCommand } from './types.js';
 import { MessageType } from '../types.js';
@@ -47,7 +50,8 @@ export const clearCommand: SlashCommand = {
       context.ui.setDebugMessage('Clearing terminal and resetting chat.');
 
       // Close persistent browser sessions before resetting chat
-      await resetBrowserSession();
+      // (langvis 壳中为同步 no-op，无 Promise 可 await)
+      resetBrowserSession();
 
       // If resetChat fails, the exception will propagate and halt the command,
       // which is the correct behavior to signal a failure to the user.
@@ -55,6 +59,15 @@ export const clearCommand: SlashCommand = {
     } else {
       context.ui.setDebugMessage('Clearing terminal.');
     }
+
+    // langvis：清屏必须换绑新 conversation——否则下一条消息仍发往旧会话
+    const conversation = await langvisClient.createConversation(
+      'New chat',
+      process.cwd(),
+    );
+    setLangvisConversation(conversation.id);
+    setLangvisConversationRecord(conversation);
+    config?.setSessionId(conversation.id);
 
     // Fire SessionStart hook after clearing
     let result;

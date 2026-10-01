@@ -242,9 +242,12 @@ export class LangvisClient {
     return out;
   }
 
-  /** 恢复 workspace 到该 turn 前的快照（会话历史不动）。 */
-  async rewind(conversationId: string, messageId: string): Promise<void> {
-    await this.request(
+  /** 恢复 workspace 到该 turn 前的快照 + 截断该 turn 起的消息。 */
+  async rewind(
+    conversationId: string,
+    messageId: string,
+  ): Promise<{ deletedMessages?: number } | null> {
+    return this.request(
       `/api/conversation/${conversationId}/rewind/${messageId}`,
       { method: 'POST' },
     );

@@ -6,6 +6,7 @@
 
 import { createElement } from 'react';
 import {
+  coreEvents,
   getLangvisConversationId,
   langvisClient,
 } from '@google/gemini-cli-core';
@@ -17,10 +18,43 @@ import {
 } from './types.js';
 import { MessageType } from '../types.js';
 import { RewindDialog } from '../components/RewindDialog.js';
+import type { LangvisCheckpoint } from '@google/gemini-cli-core';
+
+async function restoreAndReplay(
+  context: CommandContext,
+  conversationId: string,
+  checkpoint: LangvisCheckpoint,
+): Promise<void> {
+  const result = await langvisClient.rewind(
+    conversationId,
+    checkpoint.messageId,
+  );
+  // 服务端已截断——重拉剩余历史并重放，屏幕与会话状态一致
+  const { messages } = await langvisClient.getMessages(conversationId);
+  context.ui.clear();
+  for (const [index, m] of messages.entries()) {
+    if (!m.content.trim()) continue;
+    context.ui.addItem(
+      {
+        type: m.role === 'user' ? MessageType.USER : MessageType.GEMINI,
+        text: m.content,
+      },
+      index,
+    );
+  }
+  coreEvents.emitFeedback(
+    'info',
+    `Rewound to before: ${checkpoint.userPreview || checkpoint.messageId}` +
+      (result?.deletedMessages
+        ? ` (${result.deletedMessages} message(s) deleted, files restored)`
+        : ''),
+  );
+}
 
 export const rewindCommand: SlashCommand = {
   name: 'rewind',
-  description: 'Restore workspace files to a checkpoint from a previous turn',
+  description:
+    'Restore workspace files and conversation to a checkpoint from a previous turn',
   kind: CommandKind.BUILT_IN,
   autoExecute: true,
   action: async (
@@ -56,8 +90,9 @@ export const rewindCommand: SlashCommand = {
     return {
       type: 'custom_dialog',
       component: createElement(RewindDialog, {
-        conversationId,
         checkpoints,
+        onRestore: (checkpoint) =>
+          restoreAndReplay(context, conversationId, checkpoint),
         onClose: () => context.ui.removeComponent(),
       }),
     };

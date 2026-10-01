@@ -7,7 +7,6 @@
 import { Box, Text } from 'ink';
 import { useState } from 'react';
 import type React from 'react';
-import { coreEvents, langvisClient } from '@google/gemini-cli-core';
 import type { LangvisCheckpoint } from '@google/gemini-cli-core';
 import { theme } from '../semantic-colors.js';
 import {
@@ -18,14 +17,15 @@ import { useKeypress } from '../hooks/useKeypress.js';
 import { formatRelativeTime } from '../../utils/sessionUtils.js';
 
 interface RewindDialogProps {
-  conversationId: string;
   checkpoints: LangvisCheckpoint[];
+  /** 执行恢复（含 UI 重放）；完成或失败后对话框自行关闭。 */
+  onRestore: (checkpoint: LangvisCheckpoint) => Promise<void>;
   onClose: () => void;
 }
 
 export const RewindDialog: React.FC<RewindDialogProps> = ({
-  conversationId,
   checkpoints,
+  onRestore,
   onClose,
 }) => {
   const [busy, setBusy] = useState(false);
@@ -55,15 +55,10 @@ export const RewindDialog: React.FC<RewindDialogProps> = ({
   const handleSelect = async (checkpoint: LangvisCheckpoint) => {
     setBusy(true);
     try {
-      await langvisClient.rewind(conversationId, checkpoint.messageId);
-      coreEvents.emitFeedback(
-        'info',
-        `Workspace restored to before: ${checkpoint.userPreview || checkpoint.messageId}`,
-      );
-    } catch (error) {
-      coreEvents.emitFeedback('error', 'Rewind failed:', error);
+      await onRestore(checkpoint);
+    } finally {
+      onClose();
     }
-    onClose();
   };
 
   return (
@@ -79,11 +74,11 @@ export const RewindDialog: React.FC<RewindDialogProps> = ({
       >
         <Box flexDirection="column" marginBottom={1}>
           <Text bold color={theme.text.primary}>
-            Rewind workspace files
+            Rewind to a checkpoint
           </Text>
           <Text color={theme.text.secondary}>
-            Restore files to before a turn (later file changes are discarded).
-            Conversation history is kept.
+            Restores workspace files and deletes the conversation from that turn
+            on. Later turns are discarded.
           </Text>
         </Box>
 
@@ -95,7 +90,7 @@ export const RewindDialog: React.FC<RewindDialogProps> = ({
 
         <Box marginTop={1}>
           <Text color={theme.text.secondary}>
-            {busy ? 'Restoring…' : '(Enter to restore, Esc to cancel)'}
+            {busy ? 'Rewinding…' : '(Enter to rewind, Esc to cancel)'}
           </Text>
         </Box>
       </Box>

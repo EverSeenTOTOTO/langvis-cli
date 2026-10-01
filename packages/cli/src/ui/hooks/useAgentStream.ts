@@ -268,8 +268,7 @@ export const useAgentStream = ({
                 ? rawSubagent
                 : undefined;
               const liveOutput =
-                subagent ??
-                (displayContentToString(display) ?? tc.resultDisplay);
+                subagent ?? displayContentToString(display) ?? tc.resultDisplay;
               const progressMessage =
                 legacyState?.progressMessage ?? tc.progressMessage;
               const progress = legacyState?.progress ?? tc.progress;
@@ -441,15 +440,28 @@ export const useAgentStream = ({
               const next: Part[] | string =
                 typeof c === 'string'
                   ? c
-                  : [c].flat().filter(
-                      (p): p is Part => typeof p === 'object' && p !== null,
-                    );
+                  : [c]
+                      .flat()
+                      .filter(
+                        (p): p is Part => typeof p === 'object' && p !== null,
+                      );
               return submitQuery(next, options);
             }
             // 'handled' / 'schedule_tool'（客户端工具调度不适用于后端执行模型）
             return;
           }
-          // 未识别的命令原样发送（与 legacy 行为一致，后端/模型自行解读）
+          // 未识别命令：run 进行中不允许排队——直接报错；空闲时原样发送
+          // （路径类输入如 /home/user/file.txt 走模型解读，与 legacy 一致）
+          if (streamingState !== StreamingState.Idle) {
+            addItem(
+              {
+                type: MessageType.ERROR,
+                text: `${trimmed} is not a command, and input can't be queued while a run is active. Wait for the turn to finish (Esc to cancel) or rephrase.`,
+              },
+              Date.now(),
+            );
+            return;
+          }
         }
       }
 
@@ -483,7 +495,14 @@ export const useAgentStream = ({
         );
       }
     },
-    [agent, addItem, logger, startNewPrompt, handleSlashCommand],
+    [
+      agent,
+      addItem,
+      logger,
+      startNewPrompt,
+      handleSlashCommand,
+      streamingState,
+    ],
   );
 
   useEffect(() => {
