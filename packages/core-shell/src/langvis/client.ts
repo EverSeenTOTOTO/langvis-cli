@@ -54,11 +54,20 @@ export class LangvisNotLoggedInError extends Error {
 export class LangvisClient {
   private fetchFn: CookieFetchLike | undefined;
 
+  private fromEnvCookie = false;
+
   private async ensureFetch(): Promise<CookieFetchLike> {
     if (this.fetchFn) return this.fetchFn;
     const fetchCookie = (await import('fetch-cookie')).default;
     let jar: CookieJar | undefined;
-    if (existsSync(cookieStorePath)) {
+    // 宿主注入的会话（服务端 PTY 场景）优先——浏览器会话不落盘覆写本地 cookies.json
+    const envCookie = process.env['LANGVIS_SESSION_COOKIE'];
+    if (envCookie && envCookie.includes('=')) {
+      jar = new CookieJar();
+      jar.setCookieSync(envCookie, serverBase);
+      this.fromEnvCookie = true;
+    }
+    if (!jar && existsSync(cookieStorePath)) {
       try {
         jar = CookieJar.deserializeSync(readFileSync(cookieStorePath, 'utf-8'));
       } catch (e) {
@@ -70,6 +79,7 @@ export class LangvisClient {
   }
 
   persistCookies(): void {
+    if (this.fromEnvCookie) return;
     const jar: unknown = this.fetchFn?.cookieJar;
     if (typeof jar !== 'object' || jar === null) return;
     if (!('serializeSync' in jar)) return;

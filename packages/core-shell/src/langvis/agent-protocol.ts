@@ -48,6 +48,8 @@ class LangvisSession {
   private eventSeq = 0;
   private disposed = false;
   private readyPromise: Promise<void> | undefined;
+  // response_user 不作为工具展示（正文已由 text_chunk 流出）——按 callId 静默其全部事件
+  private readonly silencedCalls = new Set<string>();
 
   constructor(private readonly conversationId: string) {}
 
@@ -233,6 +235,10 @@ class LangvisSession {
         ];
 
       case 'tool_call':
+        if (ev.toolName === 'response_user') {
+          this.silencedCalls.add(ev.callId);
+          return [];
+        }
         return [
           {
             ...base,
@@ -253,6 +259,7 @@ class LangvisSession {
         ];
 
       case 'tool_progress': {
+        if (this.silencedCalls.has(ev.callId)) return [];
         const out: AgentEvent[] = [
           {
             ...base,
@@ -288,6 +295,9 @@ class LangvisSession {
       }
 
       case 'tool_result':
+        if (ev.toolName === 'response_user' || this.silencedCalls.has(ev.callId)) {
+          return [];
+        }
         return [
           {
             ...base,
@@ -301,6 +311,9 @@ class LangvisSession {
         ];
 
       case 'tool_error':
+        if (ev.toolName === 'response_user' || this.silencedCalls.has(ev.callId)) {
+          return [];
+        }
         return [
           {
             ...base,

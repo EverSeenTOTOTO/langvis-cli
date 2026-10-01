@@ -9,7 +9,6 @@ import { hideBin } from 'yargs/helpers';
 import process from 'node:process';
 import * as path from 'node:path';
 import { execa } from 'execa';
-import { skillsCommand } from '../commands/skills.js';
 import {
   setGeminiMdFilename as setServerGeminiMdFilename,
   resetGeminiMdFilename,
@@ -64,8 +63,6 @@ import {
   createPolicyEngineConfig,
   resolveWorkspacePolicyState,
 } from './policy.js';
-import type { ExtensionManager } from './extension-manager.js';
-import { McpServerEnablementManager } from './mcp/mcpServerEnablement.js';
 import { runExitCleanup } from '../utils/cleanup.js';
 
 export interface CliArgs {
@@ -174,8 +171,11 @@ export async function parseArguments(
       default: false,
     })
     .middleware((argv) => {
-      // langvis 裁剪：CLI 子命令只剩 skills（mcp/extensions/hooks/gemma 已删）。
-      const commandModules = [skillsCommand];
+      // langvis 裁剪：无 CLI 子命令形态。
+      const commandModules: Array<{
+        command?: string | string[];
+        aliases?: string | string[];
+      }> = [];
 
       const subcommands = commandModules.flatMap((mod) => {
         const names: string[] = [];
@@ -260,7 +260,6 @@ export async function parseArguments(
       return true;
     });
 
-  yargsInstance.command(skillsCommand);
 
   yargsInstance
     .command('$0 [query..]', 'Launch Gemini CLI', (yargsInstance) =>
@@ -645,7 +644,7 @@ export async function loadCliConfig(
   }
 
   // langvis 裁剪：extension 体系整体移除——不再发现/加载本地扩展。
-  const extensionManager = undefined as ExtensionManager | undefined;
+
 
   const extensionPlanSettings = undefined;
 
@@ -659,8 +658,8 @@ export async function loadCliConfig(
     );
   }
 
-  const finalExtensionLoader =
-    extensionManager ?? new SimpleExtensionLoader([]);
+  // langvis 裁剪：extension 体系移除——空 loader 占位（Config 契约需要非空）。
+  const finalExtensionLoader = new SimpleExtensionLoader([]);
 
   const question = argv.promptInteractive || argv.prompt || '';
 
@@ -849,11 +848,8 @@ export async function loadCliConfig(
   const extensionsEnabled = settings.admin?.extensions?.enabled ?? true;
   const adminSkillsEnabled = settings.admin?.skills?.enabled ?? true;
 
-  // Create MCP enablement manager and callbacks
-  const mcpEnablementManager = McpServerEnablementManager.getInstance();
-  const mcpEnablementCallbacks = mcpEnabled
-    ? mcpEnablementManager.getEnablementCallbacks()
-    : undefined;
+  // langvis 裁剪：MCP 关闭——enablement 回调为空。
+  const mcpEnablementCallbacks = undefined;
 
   const adminAllowlist = settings.admin?.mcp?.config;
   let mcpServerCommand = mcpEnabled ? settings.mcp?.serverCommand : undefined;
@@ -1100,7 +1096,7 @@ export async function loadCliConfig(
   });
 }
 
-function mergeExcludeTools(
+export function mergeExcludeTools(
   settings: MergedSettings,
   extraExcludes: string[] = [],
 ): string[] {

@@ -149,13 +149,8 @@ import { useMcpStatus } from './hooks/useMcpStatus.js';
 import { useApprovalModeIndicator } from './hooks/useApprovalModeIndicator.js';
 import { useSessionStats } from './contexts/SessionContext.js';
 import { useGitBranchName } from './hooks/useGitBranchName.js';
-import {
-  useConfirmUpdateRequests,
-  useExtensionUpdates,
-} from './hooks/useExtensionUpdates.js';
+import { useConfirmUpdateRequests } from './hooks/useConfirmUpdateRequests.js';
 import { ShellFocusContext } from './contexts/ShellFocusContext.js';
-import { type ExtensionManager } from '../config/extension-manager.js';
-import { requestConsentInteractive } from '../config/extensions/consent.js';
 import { useSessionBrowser } from './hooks/useSessionBrowser.js';
 import { useSessionResume } from './hooks/useSessionResume.js';
 import { useIncludeDirsTrust } from './hooks/useIncludeDirsTrust.js';
@@ -368,25 +363,11 @@ export const AppContainer = (props: AppContainerProps) => {
 
   const { bannerText } = useBanner(bannerData);
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-  const extensionManager = config.getExtensionLoader() as ExtensionManager;
-  // We are in the interactive CLI, update how we request consent and settings.
-  extensionManager.setRequestConsent((description) =>
-    requestConsentInteractive(description, addConfirmUpdateExtensionRequest),
-  );
-  extensionManager.setRequestSetting();
-
+  // langvis 裁剪：extension 体系移除——更新态恒空，确认请求槽保留（terminal-setup 提示仍用）。
   const { addConfirmUpdateExtensionRequest, confirmUpdateExtensionRequests } =
     useConfirmUpdateRequests();
-  const {
-    extensionsUpdateState,
-    extensionsUpdateStateInternal,
-    dispatchExtensionStateUpdate,
-  } = useExtensionUpdates(
-    extensionManager,
-    historyManager.addItem,
-    config.getEnableExtensionReloading(),
-  );
+  const extensionsUpdateState = new Map<string, never>();
+  const extensionsUpdateStateInternal = extensionsUpdateState;
 
   const [isPermissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
   const [permissionsDialogProps, setPermissionsDialogProps] = useState<{
@@ -984,7 +965,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
       toggleCorgiMode: () => setCorgiMode((prev) => !prev),
       toggleVoiceMode: () => setVoiceModeEnabled((prev) => !prev),
       toggleDebugProfiler,
-      dispatchExtensionStateUpdate,
+      dispatchExtensionStateUpdate: () => undefined,
       addConfirmUpdateExtensionRequest,
       toggleBackgroundTasks: () => {
         toggleBackgroundTasksRef.current();
@@ -1014,7 +995,6 @@ Logging in with Google... Restarting Gemini CLI to continue.
       setDebugMessage,
       setShowPrivacyNotice,
       setCorgiMode,
-      dispatchExtensionStateUpdate,
       openPermissionsDialog,
       addConfirmUpdateExtensionRequest,
       toggleDebugProfiler,

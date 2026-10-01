@@ -62,6 +62,21 @@ const terminalNotificationsMocks = vi.hoisted(() => ({
   })),
 }));
 
+
+/** ExtensionManager 已随体系裁剪——测试旧 mock 面用空 stub 顶替。 */
+class ExtensionManager {
+  getExtensions(): unknown[] {
+    return [];
+  }
+  async loadExtensions(): Promise<void> {}
+  setRequestConsent(): void {}
+  setRequestSetting(): void {}
+}
+
+vi.mock('./hooks/useConfirmUpdateRequests.js', () => ({
+  useConfirmUpdateRequests: vi.fn(),
+}));
+
 vi.mock('@google/gemini-cli-core', async (importOriginal) => {
   const actual =
     await importOriginal<typeof import('@google/gemini-cli-core')>();
@@ -237,10 +252,7 @@ import { useIdeTrustListener } from './hooks/useIdeTrustListener.js';
 import { useMessageQueue } from './hooks/useMessageQueue.js';
 import { useApprovalModeIndicator } from './hooks/useApprovalModeIndicator.js';
 import { useGitBranchName } from './hooks/useGitBranchName.js';
-import {
-  useConfirmUpdateRequests,
-  useExtensionUpdates,
-} from './hooks/useExtensionUpdates.js';
+import { useConfirmUpdateRequests } from './hooks/useConfirmUpdateRequests.js';
 import { useVimMode } from './contexts/VimModeContext.js';
 import { useSessionStats } from './contexts/SessionContext.js';
 import { useTextBuffer } from './components/shared/text-buffer.js';
@@ -255,7 +267,6 @@ import {
   enableMouseEvents,
   disableMouseEvents,
 } from '@google/gemini-cli-core';
-import { type ExtensionManager } from '../config/extension-manager.js';
 import {
   WARNING_PROMPT_DURATION_MS,
   EXPAND_HINT_DURATION_MS,
@@ -322,7 +333,6 @@ describe('AppContainer State Management', () => {
   const mockedUseApprovalModeIndicator = useApprovalModeIndicator as Mock;
   const mockedUseGitBranchName = useGitBranchName as Mock;
   const mockedUseConfirmUpdateRequests = useConfirmUpdateRequests as Mock;
-  const mockedUseExtensionUpdates = useExtensionUpdates as Mock;
   const mockedUseVimMode = useVimMode as Mock;
   const mockedUseSessionStats = useSessionStats as Mock;
   const mockedUseTextBuffer = useTextBuffer as Mock;
@@ -480,11 +490,6 @@ describe('AppContainer State Management', () => {
       addConfirmUpdateExtensionRequest: vi.fn(),
       confirmUpdateExtensionRequests: [],
     });
-    mockedUseExtensionUpdates.mockReturnValue({
-      extensionsUpdateState: new Map(),
-      extensionsUpdateStateInternal: new Map(),
-      dispatchExtensionStateUpdate: vi.fn(),
-    });
 
     // Mock Config
     mockConfig = makeFakeConfig();
@@ -502,7 +507,9 @@ describe('AppContainer State Management', () => {
       start: vi.fn(),
     } as unknown as MockedObject<ExtensionManager>;
     vi.spyOn(mockConfig, 'getExtensionLoader').mockReturnValue(
-      mockExtensionManager,
+      mockExtensionManager as unknown as ReturnType<
+        typeof mockConfig.getExtensionLoader
+      >,
     );
 
     // Mock LoadedSettings

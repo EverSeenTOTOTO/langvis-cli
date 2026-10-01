@@ -28,7 +28,6 @@ import { ToolStatsDisplay } from './ToolStatsDisplay.js';
 import { SessionSummaryDisplay } from './SessionSummaryDisplay.js';
 import { Help } from './Help.js';
 import type { SlashCommand } from '../commands/types.js';
-import { ExtensionsList } from './views/ExtensionsList.js';
 import { getMCPServerStatus } from '@google/gemini-cli-core';
 import { ToolsList } from './views/ToolsList.js';
 import { SkillsList } from './views/SkillsList.js';
@@ -214,9 +213,6 @@ export const HistoryItemDisplay: React.FC<HistoryItemDisplayProps> = ({
       )}
       {itemForDisplay.type === 'export_session' && (
         <ExportSessionMessage exportSession={itemForDisplay.exportSession} />
-      )}
-      {itemForDisplay.type === 'extensions_list' && (
-        <ExtensionsList extensions={itemForDisplay.extensions} />
       )}
       {itemForDisplay.type === 'tools_list' && (
         <ToolsList

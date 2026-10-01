@@ -34,7 +34,6 @@ import { terminalCapabilityManager } from './terminalCapabilityManager.js';
 import { debugLogger, homedir } from '@google/gemini-cli-core';
 import { useEffect } from 'react';
 import { persistentState } from '../../utils/persistentState.js';
-import { requestConsentInteractive } from '../../config/extensions/consent.js';
 import type { ConfirmationRequest } from '../types.js';
 import type { UseHistoryManagerReturn } from '../hooks/useHistoryManager.js';
 
@@ -511,10 +510,13 @@ export function useTerminalSetupPrompt({
 
       persistentState.set('terminalSetupPromptShown', true);
 
-      const confirmed = await requestConsentInteractive(
-        TERMINAL_SETUP_CONSENT_MESSAGE,
-        addConfirmUpdateExtensionRequest,
-      );
+      // langvis 裁剪：consent UI 移除——经确认请求槽直出（原 requestConsentInteractive 等价内联）。
+      const confirmed = await new Promise<boolean>((resolve) => {
+        addConfirmUpdateExtensionRequest({
+          prompt: TERMINAL_SETUP_CONSENT_MESSAGE,
+          onConfirm: resolve,
+        });
+      });
 
       if (!confirmed || cancelled) return;
 

@@ -402,6 +402,14 @@ export class SessionSelector {
    * Checks if a session with the given ID already exists on disk.
    */
   async sessionExists(id: string): Promise<boolean> {
+    // langvis：会话在后端——按 workspace 列表判定
+    const { conversations } = await langvisClient.listConversationsByWorkspace(
+      process.cwd(),
+    );
+    return conversations.some((c) => c.id === id);
+  }
+
+  async sessionExistsLegacy(id: string): Promise<boolean> {
     const chatsDir = path.join(this.storage.getProjectTempDir(), 'chats');
     const files = await fs.readdir(chatsDir).catch(() => []);
 
@@ -528,25 +536,29 @@ export class SessionSelector {
   private async selectSession(
     sessionInfo: SessionInfo,
   ): Promise<SessionSelectionResult> {
-    const chatsDir = path.join(this.storage.getProjectTempDir(), 'chats');
-    const sessionPath = path.join(chatsDir, sessionInfo.fileName);
-
+    // langvis：会话在后端——拉取 conversation 与消息合成 record
     try {
-      const sessionData = await loadConversationRecord(sessionPath);
-      if (!sessionData) {
-        throw new Error('Failed to load session data');
-      }
-      const normalizedSessionData = {
-        ...sessionData,
-        startTime: sessionData.startTime || sessionInfo.startTime,
-        lastUpdated: sessionData.lastUpdated || sessionInfo.lastUpdated,
+      const [conversation, { messages }] = await Promise.all([
+        langvisClient.getConversation(sessionInfo.id),
+        langvisClient.getMessages(sessionInfo.id),
+      ]);
+      const sessionData: ConversationRecord = {
+        sessionId: conversation.id,
+        projectHash: '',
+        startTime: conversation.createdAt,
+        lastUpdated: conversation.createdAt,
+        messages: messages.map((m) => ({
+          type: m.role === 'user' ? 'user' : 'gemini',
+          content: [{ text: m.content }],
+          id: m.id,
+          timestamp: m.createdAt,
+        })) as ConversationRecord['messages'],
       };
-
       const displayInfo = `Session ${sessionInfo.index}: ${sessionInfo.firstUserMessage} (${sessionInfo.messageCount} messages, ${formatRelativeTime(sessionInfo.lastUpdated)})`;
 
       return {
-        sessionPath,
-        sessionData: normalizedSessionData,
+        sessionPath: sessionInfo.id,
+        sessionData,
         displayInfo,
       };
     } catch (error) {

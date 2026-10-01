@@ -52,13 +52,25 @@ export class LangvisSSE {
   private async connect(): Promise<void> {
     if (this.closed) return;
     try {
-      const resp = await this.client.authedFetch(
-        `/api/chat/activate/${this.conversationId}`,
-        {
-          headers: { accept: 'text/event-stream' },
-          signal: AbortSignal.timeout(CONNECT_TIMEOUT_MS),
-        },
+      // 超时只约束连接建立：拿到响应头即解除，body 流是长连接不受它管
+      // （AbortSignal.timeout 挂在 fetch 上会掐断整个流，造成 30s 一断的假死循环）。
+      const timeoutController = new AbortController();
+      const timeoutTimer = setTimeout(
+        () => timeoutController.abort(),
+        CONNECT_TIMEOUT_MS,
       );
+      let resp: Response;
+      try {
+        resp = await this.client.authedFetch(
+          `/api/chat/activate/${this.conversationId}`,
+          {
+            headers: { accept: 'text/event-stream' },
+            signal: timeoutController.signal,
+          },
+        );
+      } finally {
+        clearTimeout(timeoutTimer);
+      }
       if (!resp.ok || !resp.body) {
         throw new Error(`SSE HTTP ${resp.status}`);
       }

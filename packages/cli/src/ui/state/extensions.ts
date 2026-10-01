@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { ExtensionUpdateInfo } from '../../config/extension.js';
 import { checkExhaustive } from '@google/gemini-cli-core';
 
 export enum ExtensionUpdateState {
@@ -43,6 +42,11 @@ export interface ScheduleUpdateArgs {
   onComplete: OnCompleteUpdate;
 }
 
+interface ExtensionUpdateInfo {
+  currentVersion?: string;
+  latestVersion?: string;
+  updateInfos?: unknown[];
+}
 type OnCompleteUpdate = (updateInfos: ExtensionUpdateInfo[]) => void;
 
 export const initialExtensionUpdatesState: ExtensionUpdatesState = {
