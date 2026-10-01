@@ -23,10 +23,11 @@ export type RunEvent =
       callId: string;
       toolName: string;
       error: string;
+      code?: string;
     }
   | { type: 'final' }
   | { type: 'cancelled'; reason: string }
-  | { type: 'error'; error: string }
+  | { type: 'error'; error: string; code?: string }
   | { type: 'audio'; filePath: string; voice?: string }
   | { type: 'loop_usage'; used: number; total: number }
   | { type: 'hook'; hookId: string; summary: string; data?: unknown };
@@ -43,6 +44,7 @@ export type StreamFrame =
       events: EnrichedEvent[];
     }
   | { type: 'run_view'; messageId: string; runId: string; [k: string]: unknown }
+  | { type: 'queued'; content: string; assistantMessageId: string }
   | { type: 'conversation_usage'; used: number; total: number }
   | { type: 'loop_usage'; runId: string; used: number; total: number };
 

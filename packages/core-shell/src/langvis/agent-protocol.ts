@@ -233,6 +233,17 @@ class LangvisSession {
         data: { used: frame.used, total: frame.total },
       });
     }
+    if (frame.type === 'queued') {
+      // steering：活跃 run 期间到达的消息已持久化排队——UI 加 queued 条目
+      this.emit({
+        id: this.nextId(),
+        streamId: 'session',
+        timestamp: new Date().toISOString(),
+        type: 'custom',
+        kind: 'queued',
+        data: { content: frame.content },
+      });
+    }
     // run_view：CLI 是增量消费者，忽略
   }
 
@@ -504,7 +515,7 @@ class LangvisSession {
             ...base,
             id: id(),
             type: 'error',
-            status: 'INTERNAL',
+            status: rpcStatusOf(ev.code),
             message: ev.error,
             fatal: true,
           },
@@ -660,6 +671,25 @@ function inferKindFromToolName(name: string): Kind {
 }
 
 // ─── 工具输出摘要 ───
+
+/** 后端 RunErrorCode → AgentEvent error.status（rpc 风格，UI 据此映射文案/重试提示）。 */
+function rpcStatusOf(code: string | undefined): string {
+  switch (code) {
+    case 'rate_limited':
+      return 'RESOURCE_EXHAUSTED';
+    case 'auth':
+      return 'UNAUTHENTICATED';
+    case 'provider':
+    case 'timeout':
+      return 'UNAVAILABLE';
+    case 'context_overflow':
+      return 'OUT_OF_RANGE';
+    case 'parse':
+      return 'INVALID_ARGUMENT';
+    default:
+      return 'INTERNAL';
+  }
+}
 
 function summarizeOutput(output: unknown): string {
   if (typeof output === 'string') return output;
