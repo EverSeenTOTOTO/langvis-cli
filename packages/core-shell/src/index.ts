@@ -246,7 +246,7 @@ export type {
   LangvisMessage,
   LangvisSkill,
   LangvisModel,
-  LangvisCheckpoint,
+  LangvisTurn,
   RunEvent as LangvisRunEvent,
   EnrichedEvent as LangvisEnrichedEvent,
   StreamFrame as LangvisStreamFrame,

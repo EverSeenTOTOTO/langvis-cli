@@ -16,45 +16,41 @@ import {
   type OpenCustomDialogActionReturn,
   type SlashCommand,
 } from './types.js';
-import { MessageType } from '../types.js';
+import { MessageType, type HistoryItem } from '../types.js';
 import { RewindDialog } from '../components/RewindDialog.js';
-import type { LangvisCheckpoint } from '@google/gemini-cli-core';
+import type { LangvisTurn } from '@google/gemini-cli-core';
 
-async function restoreAndReplay(
+async function rewindAndReplay(
   context: CommandContext,
   conversationId: string,
-  checkpoint: LangvisCheckpoint,
+  turn: LangvisTurn,
 ): Promise<void> {
-  const result = await langvisClient.rewind(
-    conversationId,
-    checkpoint.messageId,
-  );
-  // 服务端已截断——重拉剩余历史并重放，屏幕与会话状态一致
+  // 先取被回退消息全文（rewind 后即删）——回填输入区供编辑重发
+  const { messages: before } = await langvisClient.getMessages(conversationId);
+  const original = before.find((m) => m.id === turn.messageId)?.content;
+  const result = await langvisClient.rewind(conversationId, turn.messageId);
+  // 服务端已截断——重拉剩余历史重放，被回退的消息回填输入区
   const { messages } = await langvisClient.getMessages(conversationId);
-  context.ui.clear();
-  for (const [index, m] of messages.entries()) {
-    if (!m.content.trim()) continue;
-    context.ui.addItem(
-      {
-        type: m.role === 'user' ? MessageType.USER : MessageType.GEMINI,
-        text: m.content,
-      },
-      index,
-    );
-  }
+  const items: HistoryItem[] = messages
+    .filter((m) => m.content.trim())
+    .map((m, index) => ({
+      id: index + 1,
+      type: m.role === 'user' ? MessageType.USER : MessageType.GEMINI,
+      text: m.content,
+    }));
+  context.ui.loadHistory(items, original ?? turn.userPreview);
   coreEvents.emitFeedback(
     'info',
-    `Rewound to before: ${checkpoint.userPreview || checkpoint.messageId}` +
+    `Rewound to before: ${turn.userPreview || turn.messageId}` +
       (result?.deletedMessages
-        ? ` (${result.deletedMessages} message(s) deleted, files restored)`
+        ? ` (${result.deletedMessages} message(s) deleted)`
         : ''),
   );
 }
 
 export const rewindCommand: SlashCommand = {
   name: 'rewind',
-  description:
-    'Restore workspace files and conversation to a checkpoint from a previous turn',
+  description: 'Rewind the conversation to a previous turn (files untouched)',
   kind: CommandKind.BUILT_IN,
   autoExecute: true,
   action: async (
@@ -69,20 +65,20 @@ export const rewindCommand: SlashCommand = {
       return;
     }
 
-    let checkpoints;
+    let turns;
     try {
-      checkpoints = await langvisClient.listCheckpoints(conversationId);
+      turns = await langvisClient.listTurns(conversationId);
     } catch (error) {
       context.ui.addItem({
         type: MessageType.ERROR,
-        text: `Failed to list checkpoints: ${error instanceof Error ? error.message : String(error)}`,
+        text: `Failed to list turns: ${error instanceof Error ? error.message : String(error)}`,
       });
       return;
     }
-    if (checkpoints.length === 0) {
+    if (turns.length === 0) {
       context.ui.addItem({
         type: MessageType.INFO,
-        text: 'No workspace checkpoints yet — one is taken at the start of each turn in a git workspace.',
+        text: 'No turns to rewind yet.',
       });
       return;
     }
@@ -90,9 +86,8 @@ export const rewindCommand: SlashCommand = {
     return {
       type: 'custom_dialog',
       component: createElement(RewindDialog, {
-        checkpoints,
-        onRestore: (checkpoint) =>
-          restoreAndReplay(context, conversationId, checkpoint),
+        turns,
+        onRewind: (turn) => rewindAndReplay(context, conversationId, turn),
         onClose: () => context.ui.removeComponent(),
       }),
     };

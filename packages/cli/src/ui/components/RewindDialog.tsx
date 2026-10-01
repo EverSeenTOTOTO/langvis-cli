@@ -7,7 +7,7 @@
 import { Box, Text } from 'ink';
 import { useState } from 'react';
 import type React from 'react';
-import type { LangvisCheckpoint } from '@google/gemini-cli-core';
+import type { LangvisTurn } from '@google/gemini-cli-core';
 import { theme } from '../semantic-colors.js';
 import {
   RadioButtonSelect,
@@ -17,15 +17,15 @@ import { useKeypress } from '../hooks/useKeypress.js';
 import { formatRelativeTime } from '../../utils/sessionUtils.js';
 
 interface RewindDialogProps {
-  checkpoints: LangvisCheckpoint[];
-  /** 执行恢复（含 UI 重放）；完成或失败后对话框自行关闭。 */
-  onRestore: (checkpoint: LangvisCheckpoint) => Promise<void>;
+  turns: LangvisTurn[];
+  /** 执行回退（含 UI 重放）；完成或失败后对话框自行关闭。 */
+  onRewind: (turn: LangvisTurn) => Promise<void>;
   onClose: () => void;
 }
 
 export const RewindDialog: React.FC<RewindDialogProps> = ({
-  checkpoints,
-  onRestore,
+  turns,
+  onRewind,
   onClose,
 }) => {
   const [busy, setBusy] = useState(false);
@@ -41,21 +41,17 @@ export const RewindDialog: React.FC<RewindDialogProps> = ({
     { isActive: true },
   );
 
-  const items: Array<RadioSelectItem<LangvisCheckpoint>> = checkpoints.map(
-    (checkpoint) => ({
-      label: checkpoint.userPreview || '(no prompt)',
-      sublabel: checkpoint.createdAt
-        ? formatRelativeTime(checkpoint.createdAt)
-        : undefined,
-      value: checkpoint,
-      key: checkpoint.messageId,
-    }),
-  );
+  const items: Array<RadioSelectItem<LangvisTurn>> = turns.map((turn) => ({
+    label: turn.userPreview || '(empty)',
+    sublabel: turn.createdAt ? formatRelativeTime(turn.createdAt) : undefined,
+    value: turn,
+    key: turn.messageId,
+  }));
 
-  const handleSelect = async (checkpoint: LangvisCheckpoint) => {
+  const handleSelect = async (turn: LangvisTurn) => {
     setBusy(true);
     try {
-      await onRestore(checkpoint);
+      await onRewind(turn);
     } finally {
       onClose();
     }
@@ -74,11 +70,11 @@ export const RewindDialog: React.FC<RewindDialogProps> = ({
       >
         <Box flexDirection="column" marginBottom={1}>
           <Text bold color={theme.text.primary}>
-            Rewind to a checkpoint
+            Rewind conversation
           </Text>
           <Text color={theme.text.secondary}>
-            Restores workspace files and deletes the conversation from that turn
-            on. Later turns are discarded.
+            Deletes messages from the selected turn on. Workspace files are not
+            touched (use git for that).
           </Text>
         </Box>
 

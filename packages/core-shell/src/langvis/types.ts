@@ -76,8 +76,8 @@ export interface LangvisModel {
   provider?: string;
 }
 
-/** turn-start workspace 快照（rewind 数据面）；messageId=assistant 消息 id。 */
-export interface LangvisCheckpoint {
+/** rewind 点 = user 消息（turn 锚点）；messageId=user 消息 id。 */
+export interface LangvisTurn {
   messageId: string;
   createdAt: string;
   userPreview: string;

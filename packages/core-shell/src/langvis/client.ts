@@ -12,11 +12,11 @@ import { dirname, join } from 'node:path';
 import { GEMINI_DIR, homedir } from '../utils/paths.js';
 import { debugLogger } from '../utils/debugLogger.js';
 import type {
-  LangvisCheckpoint,
   LangvisConversation,
   LangvisMessage,
   LangvisModel,
   LangvisSkill,
+  LangvisTurn,
 } from './types.js';
 
 const serverBase = (
@@ -217,17 +217,17 @@ export class LangvisClient {
     });
   }
 
-  // ── checkpoints (rewind) ──
+  // ── rewind（纯对话回退） ──
 
-  /** turn-start workspace 快照列表（新到旧）。 */
-  async listCheckpoints(conversationId: string): Promise<LangvisCheckpoint[]> {
+  /** rewind 点列表：全部 user 消息，新到旧。 */
+  async listTurns(conversationId: string): Promise<LangvisTurn[]> {
     const resp = await this.request<unknown>(
-      `/api/conversation/${conversationId}/checkpoints`,
+      `/api/conversation/${conversationId}/turns`,
     );
     const rec = asRecord(resp);
-    const list = rec?.['checkpoints'];
+    const list = rec?.['turns'];
     if (!Array.isArray(list)) return [];
-    const out: LangvisCheckpoint[] = [];
+    const out: LangvisTurn[] = [];
     for (const c of list) {
       const r = asRecord(c);
       const messageId = r?.['messageId'];
@@ -242,7 +242,7 @@ export class LangvisClient {
     return out;
   }
 
-  /** 恢复 workspace 到该 turn 前的快照 + 截断该 turn 起的消息。 */
+  /** 截断该 user 消息起的会话（不动文件）。 */
   async rewind(
     conversationId: string,
     messageId: string,
