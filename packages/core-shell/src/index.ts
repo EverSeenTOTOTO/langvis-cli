@@ -258,3 +258,4 @@ export {
   getLangvisCurrentModelId,
 } from './langvis/models.js';
 export { playLangvisAudio } from './langvis/audio.js';
+export { langvisBaseUrl } from './langvis/client.js';

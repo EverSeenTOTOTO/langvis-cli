@@ -2282,6 +2282,8 @@ export const useGeminiStream = (
     pendingElicitation: undefined,
     submitElicitation: undefined,
     cancelElicitation: undefined,
+    conversationUsage: null,
+    loopUsage: null,
     initError,
     pendingHistoryItems,
     thought,

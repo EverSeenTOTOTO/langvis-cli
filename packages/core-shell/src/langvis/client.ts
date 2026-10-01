@@ -51,6 +51,11 @@ export class LangvisNotLoggedInError extends Error {
   }
 }
 
+/** 模块级取后端基址（UI 链接拼接用）。 */
+export function langvisBaseUrl(): string {
+  return serverBase;
+}
+
 export class LangvisClient {
   private fetchFn: CookieFetchLike | undefined;
 
@@ -170,10 +175,38 @@ export class LangvisClient {
     return this.request(`/api/conversation/${conversationId}`);
   }
 
+  /** 返回迁移后的裸 Message[] 形状（逐项守卫校验）。 */
   async getMessages(
     conversationId: string,
   ): Promise<{ messages: LangvisMessage[] }> {
-    return this.request(`/api/conversation/${conversationId}/messages`);
+    const resp = await this.request<unknown>(
+      `/api/conversation/${conversationId}/messages`,
+    );
+    if (!Array.isArray(resp)) {
+      throw new Error(
+        `langvis: unexpected /messages response shape: ${JSON.stringify(resp).slice(0, 200)}`,
+      );
+    }
+    const messages: LangvisMessage[] = [];
+    for (const m of resp) {
+      const rec = asRecord(m);
+      const id = rec?.['id'];
+      const role = rec?.['role'];
+      const content = rec?.['content'];
+      const createdAt = rec?.['createdAt'];
+      if (
+        typeof id !== 'string' ||
+        typeof role !== 'string' ||
+        typeof content !== 'string' ||
+        typeof createdAt !== 'string'
+      ) {
+        throw new Error(
+          `langvis: unexpected message shape: ${JSON.stringify(m).slice(0, 200)}`,
+        );
+      }
+      messages.push({ id, role, content, createdAt });
+    }
+    return { messages };
   }
 
   async deleteConversation(conversationId: string): Promise<void> {
@@ -225,7 +258,15 @@ export class LangvisClient {
   ): Promise<void> {
     await this.request(`/api/human-input/${runId}`, {
       method: 'POST',
-      body: JSON.stringify({ runId, data }),
+      body: JSON.stringify({ runId, data, action: 'submit' }),
+    });
+  }
+
+  /** 用户明确放弃表单——等价超时（submitted:false），工具侧按拒绝处理。 */
+  async cancelHumanInput(runId: string): Promise<void> {
+    await this.request(`/api/human-input/${runId}`, {
+      method: 'POST',
+      body: JSON.stringify({ runId, action: 'cancel' }),
     });
   }
 
@@ -268,6 +309,11 @@ export class LangvisClient {
 
   get baseUrl(): string {
     return serverBase;
+  }
+
+  /** UI 侧拼接资源 URL 用（upload 静态路径等）。 */
+  get uploadBase(): string {
+    return `${serverBase}/upload`;
   }
 
   /** 认证态的裸 fetch（SSE 流用——需要拿到 body stream 而非 JSON）。 */

@@ -54,6 +54,14 @@ export const useSessionBrowser = (
      */
     handleResumeSession: useCallback(
       async (session: SessionInfo) => {
+        if (session.isCurrentSession) {
+          coreEvents.emitFeedback(
+            'info',
+            'Already in this session (CLI auto-resumes the latest on start).',
+          );
+          setIsSessionBrowserOpen(false);
+          return;
+        }
         try {
           // langvis：会话在后端——重绑 conversation + 拉取消息重放 UI 历史。
           const [conversationRecord, { messages }] = await Promise.all([

@@ -28,7 +28,6 @@ build:
 	npm run build
 
 bundle:
-	rm -rf bundle
 	npm run bundle
 
 typecheck:

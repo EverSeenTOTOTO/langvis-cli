@@ -422,8 +422,11 @@ export async function main() {
 
   // langvis：后端会话校验 + cwd conversation 绑定（cookies.json 持久登录）。
   let langvisConversationId: string;
+  let langvisResumed: ResumedSessionData | undefined;
   try {
-    langvisConversationId = await initializeLangvis();
+    const langvisInit = await initializeLangvis();
+    langvisConversationId = langvisInit.conversationId;
+    langvisResumed = langvisInit.resumed;
     // langvis 认证由后端持有——占用 selectedType 槽位让 UI 状态机直达 Authenticated，
     // 跳过 Google 认证选择框（validate/refreshAuth 在壳里均为直通）。
     if (
@@ -568,7 +571,7 @@ export async function main() {
         settings,
         startupWarnings,
         process.cwd(),
-        resumedSessionData,
+        langvisResumed ?? resumedSessionData,
         initializationResult,
       );
       return;

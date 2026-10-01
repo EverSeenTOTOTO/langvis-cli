@@ -50,6 +50,28 @@ class LangvisSession {
   private readyPromise: Promise<void> | undefined;
   // response_user 不作为工具展示（正文已由 text_chunk 流出）——按 callId 静默其全部事件
   private readonly silencedCalls = new Set<string>();
+  // bash 流式输出的尾部窗口（callId → 最近输出），tool_update 经 progressMessage 喂 UI
+  private readonly liveOutput = new Map<string, string>();
+  private readonly announcedChildren = new Set<string>();
+  private subagentParent: string | undefined;
+  // 子 agent 聚合：childRunId → {parentCallId, brief, activities[], state, result}
+  // 展示走虚拟 callId（父#child）+ _meta.subagentProgress 对象（SubagentGroupDisplay 现成渲染）
+  private readonly children = new Map<
+    string,
+    {
+      parentCallId: string;
+      brief: string;
+      activities: Array<{
+        id: string;
+        type: 'thought' | 'tool_call';
+        content: string;
+        displayName?: string;
+        status: string;
+      }>;
+      state?: 'running' | 'completed' | 'error' | 'cancelled';
+      result?: string;
+    }
+  >();
 
   constructor(private readonly conversationId: string) {}
 
@@ -200,7 +222,18 @@ class LangvisSession {
         outputTokens: frame.total,
       });
     }
-    // run_view / conversation_usage：CLI 是增量消费者，忽略
+    if (frame.type === 'conversation_usage') {
+      // 会话级上下文用量——custom 事件下发（used/total，UI 状态栏消费）
+      this.emit({
+        id: this.nextId(),
+        streamId: 'session',
+        timestamp: new Date().toISOString(),
+        type: 'custom',
+        kind: 'conversation_usage',
+        data: { used: frame.used, total: frame.total },
+      });
+    }
+    // run_view：CLI 是增量消费者，忽略
   }
 
   private translate(ev: EnrichedEvent, streamId: string): AgentEvent[] {
@@ -239,6 +272,12 @@ class LangvisSession {
           this.silencedCalls.add(ev.callId);
           return [];
         }
+        if (ev.toolName === 'call_subagents') {
+          // 父调用静默——展示由子代理虚拟 callId 承载（childEvents）
+          this.silencedCalls.add(ev.callId);
+          this.subagentParent = ev.callId;
+          return [];
+        }
         return [
           {
             ...base,
@@ -260,6 +299,101 @@ class LangvisSession {
 
       case 'tool_progress': {
         if (this.silencedCalls.has(ev.callId)) return [];
+        const d: Record<string, unknown> | undefined =
+          typeof ev.data === 'object' && ev.data !== null
+            ? // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+              (ev.data as Record<string, unknown>)
+            : undefined;
+        // bash 流式输出：{type:'stdout'|'stderr', text} → progressMessage（尾部窗口）
+        const streamType = strOf(d?.['type']);
+        const streamText = strOf(d?.['text']);
+        if (
+          (streamType === 'stdout' || streamType === 'stderr') &&
+          streamText !== undefined
+        ) {
+          const text = streamText;
+          const prev = this.liveOutput.get(ev.callId) ?? '';
+          const merged = (prev + text).slice(-240);
+          this.liveOutput.set(ev.callId, merged);
+          const lastLine = merged.split('\n').filter(Boolean).pop() ?? merged;
+          return [
+            {
+              ...base,
+              id: id(),
+              type: 'tool_update',
+              requestId: ev.callId,
+              _meta: {
+                legacyState: {
+                  status: 'executing',
+                  progressMessage: lastLine,
+                },
+              },
+            },
+          ];
+        }
+        // 子代理负载：启动通报 {childRunId, brief, query} / 事件转发 {childRunId, event}
+        const childRunId = (d as { childRunId?: unknown } | undefined)?.[
+          'childRunId'
+        ];
+        if (typeof childRunId === 'string' && this.subagentParent) {
+          const forwarded = (d as { event?: unknown } | undefined)?.['event'];
+          const child = this.children.get(childRunId);
+          const brief = strOf(d?.['brief']);
+          if (!child && brief !== undefined) {
+            this.children.set(childRunId, {
+              parentCallId: this.subagentParent,
+              brief: brief.slice(0, 60),
+              activities: [],
+            });
+            return this.childEvents(childRunId, base);
+          }
+          if (child && forwarded && typeof forwarded === 'object') {
+            const fe = forwarded as {
+              type?: string;
+              content?: string;
+              toolName?: string;
+              callId?: string;
+              toolArgs?: Record<string, unknown>;
+              output?: unknown;
+              error?: string;
+            };
+            if (fe.type === 'thought' && typeof fe.content === 'string') {
+              child.activities.push({
+                id: `${childRunId}:t${child.activities.length}`,
+                type: 'thought',
+                content: fe.content.slice(0, 160),
+                status: 'running',
+              });
+            } else if (fe.type === 'tool_call' && typeof fe.toolName === 'string') {
+              child.activities.push({
+                id: fe.callId ?? `${childRunId}:c${child.activities.length}`,
+                type: 'tool_call',
+                content: JSON.stringify(fe.toolArgs ?? {}).slice(0, 160),
+                displayName: fe.toolName,
+                status: 'running',
+              });
+            } else if (
+              (fe.type === 'tool_result' || fe.type === 'tool_error') &&
+              typeof fe.callId === 'string'
+            ) {
+              const act = child.activities.find(a => a.id === fe.callId);
+              if (act) act.status = fe.type === 'tool_error' ? 'error' : 'completed';
+            } else if (fe.type === 'text_chunk' && typeof fe.content === 'string') {
+              child.result = (child.result ?? '') + fe.content;
+            } else if (fe.type === 'final') {
+              child.state = 'completed';
+            } else if (fe.type === 'cancelled') {
+              child.state = 'cancelled';
+            } else if (fe.type === 'error') {
+              child.state = 'error';
+              child.result = fe.error ?? child.result;
+            }
+            return this.childEvents(childRunId, base);
+          }
+          if (child) return this.childEvents(childRunId, base);
+          return [];
+        }
+
         const out: AgentEvent[] = [
           {
             ...base,
@@ -269,8 +403,6 @@ class LangvisSession {
             _meta: { legacyState: { status: 'executing' } },
           },
         ];
-        const d =
-          typeof ev.data === 'object' && ev.data !== null ? ev.data : undefined;
         const status = (d as { status?: unknown } | undefined)?.['status'];
         const message = (d as { message?: unknown } | undefined)?.['message'];
         const schema = (d as { schema?: unknown } | undefined)?.['schema'];
@@ -295,6 +427,35 @@ class LangvisSession {
       }
 
       case 'tool_result':
+        if (ev.toolName === 'call_subagents') {
+          this.subagentParent = undefined;
+          return [];
+        }
+        if (ev.toolName === 'file_edit') {
+          // diff 渲染：observation 带 old/new → DisplayDiff（渲染器现成）
+          const o = asRecordish(ev.output);
+          const path = typeof o?.['path'] === 'string' ? o['path'] : undefined;
+          const before = typeof o?.['oldString'] === 'string' ? o['oldString'] : undefined;
+          const after = typeof o?.['newString'] === 'string' ? o['newString'] : undefined;
+          if (path && before !== undefined && after !== undefined) {
+            return [
+              {
+                ...base,
+                id: id(),
+                type: 'tool_response',
+                requestId: ev.callId,
+                name: ev.toolName,
+                content: [
+                  { type: 'text', text: `edited ${path}` },
+                ],
+                display: {
+                  name: ev.toolName,
+                  result: { type: 'diff', path, beforeText: before, afterText: after },
+                },
+              },
+            ];
+          }
+        }
         if (ev.toolName === 'response_user' || this.silencedCalls.has(ev.callId)) {
           return [];
         }
@@ -381,6 +542,57 @@ class LangvisSession {
     return randomUUID();
   }
 
+  /** 子代理进度 → 虚拟 callId 的 tool_request/tool_update（resultDisplay=SubagentProgress 对象）。 */
+  private childEvents(
+    childRunId: string,
+    base: { streamId: string; timestamp: string },
+  ): AgentEvent[] {
+    const child = this.children.get(childRunId);
+    if (!child) return [];
+    const id = () => this.nextId();
+    const callId = `${child.parentCallId}#${childRunId}`;
+    const out: AgentEvent[] = [];
+    if (!this.announcedChildren.has(callId)) {
+      this.announcedChildren.add(callId);
+      out.push({
+        ...base,
+        id: id(),
+        type: 'tool_request',
+        requestId: callId,
+        name: 'subagent',
+        args: { brief: child.brief },
+        display: { name: child.brief },
+        _meta: {
+          legacyState: { displayName: child.brief, kind: Kind.Agent },
+        },
+      });
+    }
+    out.push({
+      ...base,
+      id: id(),
+      type: 'tool_update',
+      requestId: callId,
+      _meta: {
+        subagentProgress: {
+          isSubagentProgress: true,
+          agentName: child.brief,
+          recentActivity: child.activities.slice(-8),
+          state: child.state ?? 'running',
+          ...(child.result !== undefined ? { result: child.result } : {}),
+        },
+        legacyState: {
+          status:
+            child.state === 'completed' || child.state === 'cancelled'
+              ? 'success'
+              : child.state === 'error'
+                ? 'error'
+                : 'executing',
+        },
+      },
+    });
+    return out;
+  }
+
   private emit(event: AgentEvent): void {
     this.trajectory.push(event);
     for (const cb of this.listeners) {
@@ -457,6 +669,17 @@ function summarizeOutput(output: unknown): string {
   } catch {
     return String(output);
   }
+}
+
+function asRecordish(v: unknown): Record<string, unknown> | undefined {
+  return typeof v === 'object' && v !== null
+    ? // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+      (v as Record<string, unknown>)
+    : undefined;
+}
+
+function strOf(v: unknown): string | undefined {
+  return typeof v === 'string' ? v : undefined;
 }
 
 function describeArgs(

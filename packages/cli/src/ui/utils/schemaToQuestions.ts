@@ -27,10 +27,12 @@ function str(v: unknown): string | undefined {
   return typeof v === 'string' ? v : undefined;
 }
 
-/** enum 项的展示 label：对象取 label/title/name，否则字符串化。 */
+/** enum 项的展示 label：对象取 label/title/name，否则字符串化（trim 模型脏空格）。 */
 function enumLabel(v: unknown): string {
   const rec = asRecord(v);
-  return str(rec?.['label']) ?? str(rec?.['title']) ?? str(rec?.['name']) ?? String(v);
+  return (
+    str(rec?.['label']) ?? str(rec?.['title']) ?? str(rec?.['name']) ?? String(v)
+  ).trim();
 }
 
 export function schemaToQuestions(
@@ -63,7 +65,14 @@ export function schemaToQuestions(
 
   for (const key of keys) {
     const p = asRecord(props[key]) ?? {};
-    const enumVals = Array.isArray(p['enum']) ? p['enum'] : undefined;
+    // enum 可在属性顶层，也可在标准 JSON Schema 的 items 里
+    const items = asRecord(p['items']);
+    const enumVals = Array.isArray(p['enum'])
+      ? p['enum']
+      : Array.isArray(items?.['enum'])
+        ? items['enum']
+        : undefined;
+    const isArray = p['type'] === 'array';
     const type: QuestionType = enumVals
       ? QuestionType.CHOICE
       : p['type'] === 'boolean'
@@ -83,6 +92,8 @@ export function schemaToQuestions(
       question: description ?? title ?? key,
       header: title ?? key,
       type,
+      // array 字段 = 多选
+      ...(isArray && enumVals ? { multiSelect: true } : {}),
       ...(enumVals
         ? {
             options: enumVals.map((v) => ({
@@ -95,6 +106,9 @@ export function schemaToQuestions(
     });
   }
 
+  const mapLabel = (labelMap: Map<string, unknown> | undefined, label: string) =>
+    labelMap?.has(label) ? labelMap.get(label) : label;
+
   const normalize = (
     answers: { [questionIndex: string]: string },
   ): Record<string, unknown> => {
@@ -103,6 +117,15 @@ export function schemaToQuestions(
       const key = keys[Number(index)] ?? String(index);
       const p = asRecord(props[key]) ?? {};
       const labelMap = labelMaps.get(key);
+      if (p['type'] === 'array') {
+        // 多选：AskUserDialog 以 ", " 拼接多个 label——拆开逐个映射回原始值
+        out[key] = answer
+          .split(',')
+          .map(part => part.trim())
+          .filter(Boolean)
+          .map(label => mapLabel(labelMap, label));
+        continue;
+      }
       if (labelMap && labelMap.has(answer)) {
         // 选中枚举项——回传原始值（对象原样）
         out[key] = labelMap.get(answer);

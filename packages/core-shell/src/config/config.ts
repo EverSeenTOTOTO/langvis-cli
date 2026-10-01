@@ -838,6 +838,8 @@ export class Config {
 
   async initialize(): Promise<void> {
     this.initialized = true;
+    // 打开 useSessionResume 的自动重放闸门（isGeminiClientInitialized）
+    await this.getGeminiClient()?.initialize();
   }
 
   async refreshAuth(

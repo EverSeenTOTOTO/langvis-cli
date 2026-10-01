@@ -680,6 +680,28 @@ const ChoiceQuestionView: React.FC<ChoiceQuestionViewProps> = ({
         return true;
       }
 
+      // langvis：多选 space = 勾选/取消当前高亮项（checkbox 惯例）。
+      // 上游把 space（charCode 32）当可打印字符触发了 type-to-jump，直接跳进 Other 输入框。
+      if (
+        question.multiSelect &&
+        !isCustomOptionFocused &&
+        key.name === 'space'
+      ) {
+        const highlighted = highlightedItemRef.current;
+        if (highlighted?.type === 'option') {
+          dispatch({
+            type: 'TOGGLE_INDEX',
+            payload: { index: highlighted.index, multiSelect: true },
+          });
+        } else if (highlighted?.type === 'other') {
+          dispatch({
+            type: 'TOGGLE_CUSTOM_SELECTED',
+            payload: { multiSelect: true },
+          });
+        }
+        return true;
+      }
+
       // Don't jump if a navigation or selection key is pressed
       if (
         keyMatchers[Command.DIALOG_NAVIGATION_UP](key) ||
@@ -706,7 +728,7 @@ const ChoiceQuestionView: React.FC<ChoiceQuestionViewProps> = ({
         key.sequence &&
         !key.ctrl &&
         !key.alt &&
-        (key.sequence.length > 1 || key.sequence.charCodeAt(0) >= 32);
+        (key.sequence.length > 1 || key.sequence.charCodeAt(0) > 32);
 
       if (isPrintable && !isCustomOptionFocused) {
         dispatch({ type: 'SET_CUSTOM_FOCUSED', payload: { focused: true } });
@@ -779,8 +801,11 @@ const ChoiceQuestionView: React.FC<ChoiceQuestionViewProps> = ({
     return list;
   }, [questionOptions, question.multiSelect, customOptionText]);
 
+  const highlightedItemRef = useRef<OptionItem | null>(null);
+
   const handleHighlight = useCallback(
     (itemValue: OptionItem) => {
+      highlightedItemRef.current = itemValue;
       const nowFocusingCustomOption = itemValue.type === 'other';
       dispatch({
         type: 'SET_CUSTOM_FOCUSED',

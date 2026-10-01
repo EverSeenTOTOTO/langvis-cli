@@ -22,6 +22,7 @@ import {
   type Logger,
   type Part,
   playLangvisAudio,
+  langvisBaseUrl,
 } from '@google/gemini-cli-core';
 import type { PartListUnion } from '@google/genai';
 import type {
@@ -32,6 +33,7 @@ import type {
   SlashCommandProcessorResult,
 } from '../types.js';
 import { isSlashCommand } from '../utils/commandUtils.js';
+import { isSubagentProgress } from '@google/gemini-cli-core';
 import { StreamingState, MessageType } from '../types.js';
 import { findLastSafeSplitPoint } from '../utils/markdownUtilities.js';
 import { getToolGroupBorderAppearance } from '../utils/borderStyles.js';
@@ -82,6 +84,14 @@ export const useAgentStream = ({
   );
   const [thought, setThought] = useState<ThoughtSummary | null>(null);
   const [lastOutputTime, setLastOutputTime] = useState<number>(Date.now());
+  const [conversationUsage, setConversationUsage] = useState<{
+    used: number;
+    total: number;
+  } | null>(null);
+  const [loopUsage, setLoopUsage] = useState<{
+    used: number;
+    total: number;
+  } | null>(null);
 
   const currentStreamIdRef = useRef<string | null>(null);
   const userMessageTimestampRef = useRef<number>(0);
@@ -250,8 +260,16 @@ export const useAgentStream = ({
                 status = CoreToolCallStatus.Success;
 
               const display = event.display?.result;
+              // 子代理进度是对象（SubagentProgress），不经字符串化直通 resultDisplay
+              const rawSubagent = (
+                event._meta as Record<string, unknown> | undefined
+              )?.['subagentProgress'];
+              const subagent = isSubagentProgress(rawSubagent)
+                ? rawSubagent
+                : undefined;
               const liveOutput =
-                displayContentToString(display) ?? tc.resultDisplay;
+                subagent ??
+                (displayContentToString(display) ?? tc.resultDisplay);
               const progressMessage =
                 legacyState?.progressMessage ?? tc.progressMessage;
               const progress = legacyState?.progress ?? tc.progress;
@@ -320,20 +338,50 @@ export const useAgentStream = ({
           setPendingElicitation({ event });
           break;
         case 'custom':
-          // langvis TTS：audio custom 事件下载播放（fire-and-forget）
+          if (
+            event.kind === 'conversation_usage' &&
+            typeof event.data?.['used'] === 'number' &&
+            typeof event.data?.['total'] === 'number'
+          ) {
+            setConversationUsage({
+              used: event.data['used'],
+              total: event.data['total'],
+            });
+          }
+          // langvis TTS：PTY 宿主场景打可点击链接，本地手跑走系统播放器
           if (event.kind === 'audio') {
-            const data = event.data as { filePath?: unknown } | undefined;
+            const data = event.data as
+              | { filePath?: unknown; hosted?: unknown }
+              | undefined;
             if (typeof data?.filePath === 'string') {
-              void playLangvisAudio(data.filePath).catch((e: unknown) =>
-                debugLogger.warn('langvis audio playback failed', e),
-              );
+              if (data.hosted === true) {
+                const base = langvisBaseUrl().replace(/\/+$/, '');
+                const path = data.filePath.replace(/^\/+/, '');
+                const url = `${base}/upload/${path}`;
+                addItem(
+                  {
+                    type: MessageType.INFO,
+                    text: `\u001b]8;;${url}\u001b\\🔊 播放语音\u001b]8;;\u001b\\ ${url}`,
+                  },
+                  Date.now(),
+                );
+              } else {
+                void playLangvisAudio(data.filePath).catch((e: unknown) =>
+                  debugLogger.warn('langvis audio playback failed', e),
+                );
+              }
             }
           }
+          break;
+        case 'usage':
+          setLoopUsage({
+            used: event.inputTokens ?? 0,
+            total: event.outputTokens ?? 0,
+          });
           break;
         case 'initialize':
         case 'session_update':
         case 'elicitation_response':
-        case 'usage':
           // These events are currently not handled in the UI
           break;
 
@@ -675,6 +723,8 @@ export const useAgentStream = ({
     pendingElicitation,
     submitElicitation,
     cancelElicitation,
+    conversationUsage,
+    loopUsage,
     initError,
     pendingHistoryItems,
     thought,

@@ -81,14 +81,18 @@ import {
   fetchAndCacheLangvisSkills,
   setLangvisConversationRecord,
   LangvisNotLoggedInError,
+  type ResumedSessionData,
 } from '@google/gemini-cli-core';
 
 /**
  * 校验 langvis 登录（cookies.json 或 LANGVIS_EMAIL/PASSWORD 兜底），
  * 然后把当前 cwd 绑定到一个 conversation（复用该 workspace 最新会话，否则新建）。
- * 返回 conversationId 供 Config.setSessionId 对齐。
+ * 复用已有会话时附带 ResumedSessionData——UI 启动自动重放历史。
  */
-export async function initializeLangvis(): Promise<string> {
+export async function initializeLangvis(): Promise<{
+  conversationId: string;
+  resumed?: ResumedSessionData;
+}> {
   try {
     await langvisClient.requireSession();
   } catch (e) {
@@ -106,13 +110,34 @@ export async function initializeLangvis(): Promise<string> {
     cwd,
   );
   // 新会话用占位名——首条消息后自动改为消息摘要（会话列表可读性）
+  const existing = conversations[0];
   const conversation =
-    conversations[0] ??
-    (await langvisClient.createConversation('New chat', cwd));
+    existing ?? (await langvisClient.createConversation('New chat', cwd));
   setLangvisConversation(conversation.id);
   setLangvisConversationRecord(conversation);
   // 预热模型定义集与 skills——ModelDialog 动态路径、/model set、/skills 的数据源
   await fetchAndCacheLangvisModels();
   await fetchAndCacheLangvisSkills();
-  return conversation.id;
+
+  // 复用已有会话：拉取历史构造 ResumedSessionData，UI 挂载后自动重放
+  let resumed: ResumedSessionData | undefined;
+  if (existing) {
+    const { messages } = await langvisClient.getMessages(conversation.id);
+    resumed = {
+      filePath: conversation.id,
+      conversation: {
+        sessionId: conversation.id,
+        projectHash: '',
+        startTime: conversation.createdAt,
+        lastUpdated: conversation.createdAt,
+        messages: messages.map(m => ({
+          type: m.role === 'user' ? ('user' as const) : ('gemini' as const),
+          content: [{ text: m.content }],
+          id: m.id,
+          timestamp: m.createdAt,
+        })),
+      },
+    };
+  }
+  return { conversationId: conversation.id, resumed };
 }
