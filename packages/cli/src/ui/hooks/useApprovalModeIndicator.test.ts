@@ -204,7 +204,7 @@ describe('useApprovalModeIndicator', () => {
     );
     expect(result.current).toBe(ApprovalMode.YOLO);
 
-    // Shift+Tab cycles back to AUTO_EDIT (from YOLO)
+    // Shift+Tab cycles back to DEFAULT (from YOLO) — langvis 三档循环
     act(() => {
       capturedUseKeypressHandler({
         name: 'tab',
@@ -212,9 +212,9 @@ describe('useApprovalModeIndicator', () => {
       } as Key);
     });
     expect(mockConfigInstance.setApprovalMode).toHaveBeenCalledWith(
-      ApprovalMode.AUTO_EDIT,
+      ApprovalMode.DEFAULT,
     );
-    expect(result.current).toBe(ApprovalMode.AUTO_EDIT);
+    expect(result.current).toBe(ApprovalMode.DEFAULT);
 
     // Ctrl+Y toggles YOLO
     act(() => {
@@ -225,7 +225,7 @@ describe('useApprovalModeIndicator', () => {
     );
     expect(result.current).toBe(ApprovalMode.YOLO);
 
-    // Shift+Tab from YOLO jumps to AUTO_EDIT
+    // Shift+Tab from YOLO → DEFAULT（langvis 三档循环）
     act(() => {
       capturedUseKeypressHandler({
         name: 'tab',
@@ -233,9 +233,9 @@ describe('useApprovalModeIndicator', () => {
       } as Key);
     });
     expect(mockConfigInstance.setApprovalMode).toHaveBeenCalledWith(
-      ApprovalMode.AUTO_EDIT,
+      ApprovalMode.DEFAULT,
     );
-    expect(result.current).toBe(ApprovalMode.AUTO_EDIT);
+    expect(result.current).toBe(ApprovalMode.DEFAULT);
   });
 
   it('should not toggle if only one key or other keys combinations are pressed', async () => {
@@ -413,6 +413,8 @@ describe('useApprovalModeIndicator', () => {
       mockConfigInstance.getApprovalMode.mockReturnValue(
         ApprovalMode.AUTO_EDIT,
       );
+      // 不可信目录 yolo 被禁——AUTO_EDIT 循环下一步退 DEFAULT 而非进 YOLO
+      mockConfigInstance.isYoloModeDisabled.mockReturnValue(true);
       const mockAddItem = vi.fn();
       await renderHook(() =>
         useApprovalModeIndicator({
@@ -681,7 +683,7 @@ describe('useApprovalModeIndicator', () => {
       capturedUseKeypressHandler({ name: 'y', ctrl: true } as Key);
     });
 
-    // Switch to AUTO_EDIT
+    // Switch to AUTO_EDIT — 从 YOLO 起步，shift+tab 落 DEFAULT 后再进 AUTO_EDIT
     act(() => {
       capturedUseKeypressHandler({ name: 'tab', shift: true } as Key);
     });
@@ -693,42 +695,38 @@ describe('useApprovalModeIndicator', () => {
     );
     expect(mockOnApprovalModeChange).toHaveBeenNthCalledWith(
       2,
-      ApprovalMode.AUTO_EDIT,
+      ApprovalMode.DEFAULT,
     );
   });
 
-  it('should cycle to PLAN when allowPlanMode is true', async () => {
+  it('should cycle AUTO_EDIT -> YOLO（langvis 三档：default → auto → yolo）', async () => {
     mockConfigInstance.getApprovalMode.mockReturnValue(ApprovalMode.AUTO_EDIT);
 
     await renderHook(() =>
       useApprovalModeIndicator({
         config: mockConfigInstance as unknown as ActualConfigType,
         addItem: vi.fn(),
-        allowPlanMode: true,
       }),
     );
 
-    // AUTO_EDIT -> PLAN
     act(() => {
       capturedUseKeypressHandler({ name: 'tab', shift: true } as Key);
     });
     expect(mockConfigInstance.setApprovalMode).toHaveBeenCalledWith(
-      ApprovalMode.PLAN,
+      ApprovalMode.YOLO,
     );
   });
 
-  it('should cycle to DEFAULT when allowPlanMode is false', async () => {
-    mockConfigInstance.getApprovalMode.mockReturnValue(ApprovalMode.AUTO_EDIT);
+  it('should cycle YOLO -> DEFAULT', async () => {
+    mockConfigInstance.getApprovalMode.mockReturnValue(ApprovalMode.YOLO);
 
     await renderHook(() =>
       useApprovalModeIndicator({
         config: mockConfigInstance as unknown as ActualConfigType,
         addItem: vi.fn(),
-        allowPlanMode: false,
       }),
     );
 
-    // AUTO_EDIT -> DEFAULT
     act(() => {
       capturedUseKeypressHandler({ name: 'tab', shift: true } as Key);
     });

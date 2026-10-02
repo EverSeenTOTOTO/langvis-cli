@@ -20,7 +20,6 @@ export interface UseApprovalModeIndicatorArgs {
   addItem?: (item: HistoryItemWithoutId, timestamp: number) => void;
   onApprovalModeChange?: (mode: ApprovalMode) => void;
   isActive?: boolean;
-  allowPlanMode?: boolean;
 }
 
 export function useApprovalModeIndicator({
@@ -28,7 +27,6 @@ export function useApprovalModeIndicator({
   addItem,
   onApprovalModeChange,
   isActive = true,
-  allowPlanMode = false,
 }: UseApprovalModeIndicatorArgs): ApprovalMode {
   const keyMatchers = useKeyMatchers();
   const currentConfigValue = config.getApprovalMode();
@@ -72,23 +70,22 @@ export function useApprovalModeIndicator({
             ? ApprovalMode.DEFAULT
             : ApprovalMode.YOLO;
       } else if (keyMatchers[Command.CYCLE_APPROVAL_MODE](key)) {
+        // langvis 三档循环：default → auto → yolo → default（plan 无后端对应，不入循环）
         const currentMode = config.getApprovalMode();
         switch (currentMode) {
           case ApprovalMode.DEFAULT:
             nextApprovalMode = ApprovalMode.AUTO_EDIT;
             break;
           case ApprovalMode.AUTO_EDIT:
-            nextApprovalMode = allowPlanMode
-              ? ApprovalMode.PLAN
-              : ApprovalMode.DEFAULT;
+            // 不可信目录禁 yolo——退回 default 而非进 yolo
+            nextApprovalMode = config.isYoloModeDisabled()
+              ? ApprovalMode.DEFAULT
+              : ApprovalMode.YOLO;
             break;
           case ApprovalMode.PLAN:
-            nextApprovalMode = ApprovalMode.DEFAULT;
-            break;
           case ApprovalMode.YOLO:
-            nextApprovalMode = ApprovalMode.AUTO_EDIT;
-            break;
           default:
+            nextApprovalMode = ApprovalMode.DEFAULT;
         }
       }
 

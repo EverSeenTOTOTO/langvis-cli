@@ -55,7 +55,6 @@ import {
   type UserFeedbackPayload,
   type HookSystemMessagePayload,
   type AgentDefinition,
-  type ApprovalMode,
   IdeClient,
   ideContextStore,
   getErrorMessage,
@@ -91,6 +90,9 @@ import {
   ApiKeyUpdatedEvent,
   LegacyAgentProtocol,
   type InjectionSource,
+  ApprovalMode,
+  bindLangvisRecordListener,
+  getLangvisConversationRecord,
 } from '@google/gemini-cli-core';
 import { validateAuthMethod } from '../config/auth.js';
 import process from 'node:process';
@@ -185,6 +187,13 @@ import {
   isToolAwaitingConfirmation,
   getAllToolCalls,
 } from './utils/historyUtils.js';
+
+// langvis 裁剪：extension 体系移除——更新态恒空。模块级常量保持身份稳定：
+// 每渲染 new Map() 会让 commandContext 的 memo 持续失效，级联重置 slash 补全的翻页导航。
+const EMPTY_EXTENSIONS_UPDATE_STATE: Map<string, never> = new Map<
+  string,
+  never
+>();
 
 interface AppContainerProps {
   config: Config;
@@ -366,7 +375,7 @@ export const AppContainer = (props: AppContainerProps) => {
   // langvis 裁剪：extension 体系移除——更新态恒空，确认请求槽保留（terminal-setup 提示仍用）。
   const { addConfirmUpdateExtensionRequest, confirmUpdateExtensionRequests } =
     useConfirmUpdateRequests();
-  const extensionsUpdateState = new Map<string, never>();
+  const extensionsUpdateState = EMPTY_EXTENSIONS_UPDATE_STATE;
   const extensionsUpdateStateInternal = extensionsUpdateState;
 
   const [isPermissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
@@ -1236,12 +1245,7 @@ Logging in with Google... Restarting langvis CLI to continue.
         width={terminalWidth}
       />
     );
-  }, [
-    pendingElicitation,
-    submitElicitation,
-    cancelElicitation,
-    terminalWidth,
-  ]);
+  }, [pendingElicitation, submitElicitation, cancelElicitation, terminalWidth]);
 
   const pendingHistoryItems = useMemo(
     () => [...pendingSlashCommandHistoryItems, ...pendingGeminiHistoryItems],
@@ -2282,17 +2286,40 @@ Logging in with Google... Restarting langvis CLI to continue.
       maxLength,
     });
 
-  const allowPlanMode =
-    config.isPlanEnabled() &&
-    streamingState === StreamingState.Idle &&
-    !hasPendingActionRequired;
+  // langvis 无 plan 档（三档 default/auto/yolo）
+  const allowPlanMode = false;
+
+  // langvis：会话绑定/切换时把 conversation config 的审批档位播种到本地指示器
+  useEffect(() => {
+    const seed = (approvalMode: string | undefined) => {
+      config.setApprovalMode(
+        approvalMode === 'yolo'
+          ? ApprovalMode.YOLO
+          : approvalMode === 'auto'
+            ? ApprovalMode.AUTO_EDIT
+            : ApprovalMode.DEFAULT,
+      );
+    };
+    bindLangvisRecordListener((record) => {
+      seed(
+        (record.config as { approval?: { mode?: string } } | undefined)
+          ?.approval?.mode,
+      );
+    });
+    seed(
+      (
+        getLangvisConversationRecord()?.config as
+          | { approval?: { mode?: string } }
+          | undefined
+      )?.approval?.mode,
+    );
+  }, [config]);
 
   const showApprovalModeIndicator = useApprovalModeIndicator({
     config,
     addItem: historyManager.addItem,
     onApprovalModeChange: handleApprovalModeChangeWithUiReveal,
     isActive: !embeddedShellFocused,
-    allowPlanMode,
   });
 
   useRunEventNotifications({

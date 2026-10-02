@@ -9,11 +9,14 @@ import {
   getErrorMessage,
   MessageSenderType,
   debugLogger,
+  ApprovalMode,
+  getLangvisConversationRecord,
+  langvisClient,
+  setLangvisConversationRecord,
   geminiPartsToContentParts,
   displayContentToString,
   parseThought,
   CoreToolCallStatus,
-  type ApprovalMode,
   Kind,
   type ThoughtSummary,
   type RetryAttemptPayload,
@@ -162,12 +165,50 @@ export const useAgentStream = ({
     [agent, onCancelSubmit],
   );
 
-  // TODO: Support native handleApprovalModeChange for Plan Mode
+  // langvis：审批档位落 conversation config(approval.mode)，下一 run 生效。
+  // PUT 串行化：快速连按时按序落库，最终态=最后一次按键；每次执行时现读 record 做 merge 基底。
+  const approvalPutChainRef = useRef<Promise<void>>(Promise.resolve());
   const handleApprovalModeChange = useCallback(
-    async (newApprovalMode: ApprovalMode) => {
-      debugLogger.debug(`Approval mode changed to ${newApprovalMode} (stub)`);
+    (newApprovalMode: ApprovalMode) => {
+      approvalPutChainRef.current = approvalPutChainRef.current
+        .catch(() => {})
+        .then(async () => {
+          const langvisMode =
+            newApprovalMode === ApprovalMode.YOLO
+              ? 'yolo'
+              : newApprovalMode === ApprovalMode.AUTO_EDIT
+                ? 'auto'
+                : newApprovalMode === ApprovalMode.DEFAULT
+                  ? 'default'
+                  : undefined;
+          const record = getLangvisConversationRecord();
+          if (!langvisMode || !record) return;
+          const updated = {
+            ...record,
+            config: {
+              ...record.config,
+              approval: {
+                ...(record.config as { approval?: object } | undefined)
+                  ?.approval,
+                mode: langvisMode,
+              },
+            },
+          };
+          try {
+            await langvisClient.updateConversation(updated);
+            setLangvisConversationRecord(updated);
+          } catch (err) {
+            addItem(
+              {
+                type: MessageType.ERROR,
+                text: `Failed to persist approval mode: ${getErrorMessage(err)}`,
+              },
+              Date.now(),
+            );
+          }
+        });
     },
-    [],
+    [addItem],
   );
 
   const handleEvent = useCallback(

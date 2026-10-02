@@ -113,12 +113,12 @@ export class GeminiClient {
 
   dispose(): void {}
 
+  // no-op：会话真相在后端（setLangvisConversation 绑定 + UI 历史重放已完成 resume）。
+  // useSessionResume 在每次 resume 末尾例行调用此方法——抛错会被当作用户可见的 resume 失败。
   async resumeChat(
     _history: ReadonlyArray<Content | HistoryTurn>,
     _resumedSessionData?: ResumedSessionData,
-  ): Promise<void> {
-    throw new Error('langvis: session resume is backend-owned');
-  }
+  ): Promise<void> {}
 
   getChatRecordingService(): ChatRecordingService | undefined {
     return undefined;

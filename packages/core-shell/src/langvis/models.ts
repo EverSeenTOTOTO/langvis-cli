@@ -43,22 +43,32 @@ export function getLangvisModelDefinitions(): Record<string, ModelDefinition> {
 
 let currentConversation: LangvisConversation | undefined;
 
+// 会话记录监听：绑定/切换会话时回调（AppContainer 据此播种本地 UI 状态，如审批档位）
+let recordListener: ((conversation: LangvisConversation) => void) | undefined;
+
+export function bindLangvisRecordListener(
+  listener: (conversation: LangvisConversation) => void,
+): void {
+  recordListener = listener;
+}
+
 export function setLangvisConversationRecord(
   conversation: LangvisConversation,
 ): void {
   currentConversation = conversation;
+  recordListener?.(conversation);
 }
 
-export function getLangvisConversationRecord(): LangvisConversation | undefined {
+export function getLangvisConversationRecord():
+  | LangvisConversation
+  | undefined {
   return currentConversation;
 }
 
 /** 会话初始模型：conversation config.model.modelId（无则 undefined 走后端默认）。 */
 export function getLangvisCurrentModelId(): string | undefined {
   const model = (
-    currentConversation?.config as
-      | { model?: { modelId?: string } }
-      | undefined
+    currentConversation?.config as { model?: { modelId?: string } } | undefined
   )?.model?.modelId;
   return typeof model === 'string' ? model : undefined;
 }

@@ -256,6 +256,8 @@ export {
   fetchAndCacheLangvisSkills,
   getLangvisModelDefinitions,
   setLangvisConversationRecord,
+  getLangvisConversationRecord,
+  bindLangvisRecordListener,
   getLangvisCurrentModelId,
 } from './langvis/models.js';
 export { playLangvisAudio } from './langvis/audio.js';
