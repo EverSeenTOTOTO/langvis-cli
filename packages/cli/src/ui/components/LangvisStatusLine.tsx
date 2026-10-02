@@ -7,7 +7,11 @@
 import React, { useEffect, useState } from 'react';
 import path from 'node:path';
 import { Box, Text } from 'ink';
-import { ApprovalMode, langvisClient } from '@google/gemini-cli-core';
+import {
+  ApprovalMode,
+  getLangvisConversationRecord,
+  langvisClient,
+} from '@google/gemini-cli-core';
 import { theme } from '../semantic-colors.js';
 import { useUIState } from '../contexts/UIStateContext.js';
 import { useSettings } from '../contexts/SettingsContext.js';
@@ -52,10 +56,12 @@ export const LangvisStatusLine: React.FC = () => {
     );
   }
 
-  const cwd = path.basename(process.cwd());
+  // workspace 取会话记录（web 终端=PTY cwd 的临时目录、本地=启动目录）；无记录回退 cwd
+  const record = getLangvisConversationRecord();
+  const workspace = path.basename(record?.workspacePath || process.cwd());
   parts.push(
     <Text key="cwd" color={theme.text.secondary}>
-      {cwd}
+      {workspace}
       {uiState.branchName ? ' ' : ''}
     </Text>,
   );
@@ -63,6 +69,13 @@ export const LangvisStatusLine: React.FC = () => {
     parts.push(
       <Text key="branch" color={theme.text.link}>
         git:({uiState.branchName})
+      </Text>,
+    );
+  }
+  if (record?.id) {
+    parts.push(
+      <Text key="conv" color={theme.ui.comment}>
+        {record.id}
       </Text>,
     );
   }

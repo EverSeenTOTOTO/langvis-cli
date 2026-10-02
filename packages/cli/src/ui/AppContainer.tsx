@@ -2278,9 +2278,14 @@ Logging in with Google... Restarting langvis CLI to continue.
   // langvis 无 plan 档（三档 default/auto/yolo）
   const allowPlanMode = false;
 
-  // langvis：会话绑定/切换时把 conversation config 的审批档位播种到本地指示器
+  // langvis：会话绑定/切换时把 conversation config 的审批档位与模型播种到本地。
+  // 模型：会话已有 modelId → 纯种子（setModel 回声抑制不回写）；会话没有 → 把本地
+  // 选择提升落库，使「状态栏显示的模型 = run 实际用的模型」（否则 run 走服务端默认）。
   useEffect(() => {
-    const seed = (approvalMode: string | undefined) => {
+    const seed = (conversationConfig: Record<string, unknown> | undefined) => {
+      const approvalMode = (
+        conversationConfig as { approval?: { mode?: string } } | undefined
+      )?.approval?.mode;
       config.setApprovalMode(
         approvalMode === 'yolo'
           ? ApprovalMode.YOLO
@@ -2288,19 +2293,21 @@ Logging in with Google... Restarting langvis CLI to continue.
             ? ApprovalMode.AUTO_EDIT
             : ApprovalMode.DEFAULT,
       );
+      const recordModel = (
+        conversationConfig as { model?: { modelId?: string } } | undefined
+      )?.model?.modelId;
+      if (!recordModel) {
+        const local = config.getModel();
+        if (local) config.setModel(local);
+      } else if (recordModel !== config.getModel()) {
+        config.setModel(recordModel);
+      }
     };
     bindLangvisRecordListener((record) => {
-      seed(
-        (record.config as { approval?: { mode?: string } } | undefined)
-          ?.approval?.mode,
-      );
+      seed(record.config as Record<string, unknown> | undefined);
     });
     seed(
-      (
-        getLangvisConversationRecord()?.config as
-          | { approval?: { mode?: string } }
-          | undefined
-      )?.approval?.mode,
+      getLangvisConversationRecord()?.config,
     );
   }, [config]);
 

@@ -102,6 +102,8 @@ export const useAgentStream = ({
   const currentStreamIdRef = useRef<string | null>(null);
   const userMessageTimestampRef = useRef<number>(0);
   const geminiMessageBufferRef = useRef<string>('');
+  // 原生思维链缓冲：一串 reasoning 分片合并成一个 thinking 历史项（正文到达或 flush 时提交）
+  const thoughtBufferRef = useRef<string>('');
   const [pendingHistoryItem, pendingHistoryItemRef, setPendingHistoryItem] =
     useStateAndRef<HistoryItemWithoutId | null>(null);
 
@@ -155,6 +157,7 @@ export const useAgentStream = ({
       setPendingHistoryItem(null);
       geminiMessageBufferRef.current = '';
     }
+    thoughtBufferRef.current = '';
   }, [addItem, pendingHistoryItemRef, setPendingHistoryItem]);
 
   const cancelOngoingRequest = useCallback(
@@ -247,6 +250,15 @@ export const useAgentStream = ({
           if (event.role === 'agent') {
             for (const part of event.content) {
               if (part.type === 'text') {
+                // 思考项让位：正文到达即提交挂起的 thinking 项（一段思考一个历史项）
+                if (pendingHistoryItemRef.current?.type === 'thinking') {
+                  addItem(
+                    pendingHistoryItemRef.current,
+                    userMessageTimestampRef.current,
+                  );
+                  setPendingHistoryItem(null);
+                  thoughtBufferRef.current = '';
+                }
                 geminiMessageBufferRef.current += part.text;
                 // Update pending history item with incremental text
                 const splitPoint = findLastSafeSplitPoint(
@@ -275,7 +287,12 @@ export const useAgentStream = ({
                   });
                 }
               } else if (part.type === 'thought') {
-                setThought(parseThought(part.thought));
+                // 原生思维链：分片累计成单项挂起（渲染由 HistoryItemDisplay 的
+                // inlineThinkingMode 门控，与 useGeminiStream 语义一致）
+                thoughtBufferRef.current += part.thought;
+                const parsed = parseThought(thoughtBufferRef.current);
+                setThought(parsed);
+                setPendingHistoryItem({ type: 'thinking', thought: parsed });
               }
             }
           }
@@ -454,6 +471,7 @@ export const useAgentStream = ({
     [
       addItem,
       flushPendingText,
+      pendingHistoryItemRef,
       setPendingHistoryItem,
       setTrackedTools,
       setStreamingState,

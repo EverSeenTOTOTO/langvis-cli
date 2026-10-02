@@ -985,20 +985,30 @@ export class Config {
     this._activeModel = newModel;
     this.onModelChange?.(newModel);
     coreEvents.emitModelChanged(newModel);
-    // 落后端：conversation config.model.modelId 全量 PUT（fire-and-forget）
+    // 落后端：conversation config.model.modelId 全量 PUT（fire-and-forget）。
+    // 回声抑制：record 已是该模型（启动/换会话种子场景）时不回写。
     const conversation = getLangvisConversationRecord();
     if (conversation) {
+      const current = (
+        conversation.config as { model?: { modelId?: string } } | undefined
+      )?.model?.modelId;
+      if (current === newModel) return;
       const merged = {
         ...conversation.config,
-        model: { ...(conversation.config as { model?: object }).model, modelId: newModel },
+        model: {
+          ...(conversation.config as { model?: object }).model,
+          modelId: newModel,
+        },
       };
       conversation.config = merged;
-      void langvisClient.updateConversation(conversation).catch((e: unknown) => {
-        coreEvents.emitFeedback(
-          'warning',
-          `langvis: failed persisting model selection: ${getErrorMessage(e)}`,
-        );
-      });
+      void langvisClient
+        .updateConversation(conversation)
+        .catch((e: unknown) => {
+          coreEvents.emitFeedback(
+            'warning',
+            `langvis: failed persisting model selection: ${getErrorMessage(e)}`,
+          );
+        });
     }
   }
 
