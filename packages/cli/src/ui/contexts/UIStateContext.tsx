@@ -163,6 +163,7 @@ export interface UIState {
   showApprovalModeIndicator: ApprovalMode;
   allowPlanMode: boolean;
   currentModel: string;
+  conversationUsage: { used: number; total: number } | null;
   contextFileNames: string[];
   errorCount: number;
   availableTerminalHeight: number | undefined;

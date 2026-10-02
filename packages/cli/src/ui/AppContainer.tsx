@@ -1226,6 +1226,7 @@ Logging in with Google... Restarting langvis CLI to continue.
     backgroundTasks,
     dismissBackgroundTask,
     retryStatus,
+    conversationUsage,
   } = activeStream;
 
   // langvis AskUser：elicitation 请求直渲现成 AskUserDialog（无本地确认队列可走）。
@@ -2539,6 +2540,7 @@ Logging in with Google... Restarting langvis CLI to continue.
       showApprovalModeIndicator,
       allowPlanMode,
       currentModel,
+      conversationUsage,
       contextFileNames,
       errorCount,
       availableTerminalHeight,
@@ -2673,6 +2675,7 @@ Logging in with Google... Restarting langvis CLI to continue.
       ideTrustRestartReason,
       isRestarting,
       currentModel,
+      conversationUsage,
       extensionsUpdateState,
       activePtyId,
       backgroundTaskCount,

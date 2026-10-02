@@ -22,7 +22,6 @@ import { clearCommand } from '../ui/commands/clearCommand.js';
 import { commandsCommand } from '../ui/commands/commandsCommand.js';
 import { copyCommand } from '../ui/commands/copyCommand.js';
 import { editorCommand } from '../ui/commands/editorCommand.js';
-import { footerCommand } from '../ui/commands/footerCommand.js';
 import { helpCommand } from '../ui/commands/helpCommand.js';
 import { shortcutsCommand } from '../ui/commands/shortcutsCommand.js';
 import { modelCommand } from '../ui/commands/modelCommand.js';
@@ -100,7 +99,6 @@ export class BuiltinCommandLoader implements ICommandLoader {
       copyCommand,
       editorCommand,
       helpCommand,
-      footerCommand,
       shortcutsCommand,
       modelCommand,
       quitCommand,

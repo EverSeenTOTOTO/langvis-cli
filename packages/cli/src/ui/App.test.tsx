@@ -49,12 +49,12 @@ vi.mock('./components/HistoryItemDisplay.js', () => ({
   HistoryItemDisplay: () => <Text>HistoryItemDisplay</Text>,
 }));
 
-vi.mock('./components/Footer.js', async () => {
+vi.mock('./components/LangvisStatusLine.js', async () => {
   const { Text, Box } = await import('ink');
   return {
-    Footer: () => (
+    LangvisStatusLine: () => (
       <Box>
-        <Text>Footer</Text>
+        <Text>StatusLine</Text>
       </Box>
     ),
   };
@@ -184,7 +184,7 @@ describe('App', () => {
     });
 
     expect(lastFrame()).toContain('Notifications');
-    expect(lastFrame()).toContain('Footer');
+    expect(lastFrame()).toContain('StatusLine');
     expect(lastFrame()).toContain('Tips for getting started');
     expect(lastFrame()).toContain('Composer');
     unmount();

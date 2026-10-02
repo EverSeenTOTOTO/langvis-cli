@@ -7,7 +7,6 @@
 import { Box, useIsScreenReaderEnabled } from 'ink';
 import { useState, useEffect } from 'react';
 import { useConfig } from '../contexts/ConfigContext.js';
-import { useSettings } from '../contexts/SettingsContext.js';
 import { useUIState } from '../contexts/UIStateContext.js';
 import { useInputState } from '../contexts/InputContext.js';
 import { useUIActions } from '../contexts/UIActionsContext.js';
@@ -19,8 +18,8 @@ import { ToastDisplay, shouldShowToast } from './ToastDisplay.js';
 import { DetailedMessagesDisplay } from './DetailedMessagesDisplay.js';
 import { ShortcutsHelp } from './ShortcutsHelp.js';
 import { InputPrompt } from './InputPrompt.js';
-import { Footer } from './Footer.js';
 import { StatusRow } from './StatusRow.js';
+import { LangvisStatusLine } from './LangvisStatusLine.js';
 import { ShowMoreLines } from './ShowMoreLines.js';
 import { QueuedMessageDisplay } from './QueuedMessageDisplay.js';
 import { OverflowProvider } from '../contexts/OverflowContext.js';
@@ -33,21 +32,17 @@ export const Composer = ({ isFocused = true }: { isFocused?: boolean }) => {
   const uiState = useUIState();
   const inputState = useInputState();
   const uiActions = useUIActions();
-  const settings = useSettings();
   const config = useConfig();
   const { vimEnabled, vimMode } = useVimMode();
   const isScreenReaderEnabled = useIsScreenReaderEnabled();
   const { columns: terminalWidth } = useTerminalSize();
   const isNarrow = isNarrowWidth(terminalWidth);
   const debugConsoleMaxHeight = Math.floor(Math.max(terminalWidth * 0.2, 5));
-  const [suggestionsVisible, setSuggestionsVisible] = useState(false);
+  const [, setSuggestionsVisible] = useState(false);
 
   const isAlternateBuffer = useAlternateBuffer();
   const showUiDetails = uiState.cleanUiDetailsVisible;
   const suggestionsPosition = isAlternateBuffer ? 'above' : 'below';
-  const hideContextSummary =
-    suggestionsVisible && suggestionsPosition === 'above';
-
   const { hasPendingActionRequired, shouldCollapseDuringApproval } =
     useComposerStatus();
 
@@ -84,8 +79,6 @@ export const Composer = ({ isFocused = true }: { isFocused?: boolean }) => {
   }
 
   const showToast = shouldShowToast(uiState, inputState);
-  const hideUiDetailsForSuggestions =
-    suggestionsVisible && suggestionsPosition === 'above';
 
   // Mini Mode VIP Flags (Pure Content Triggers)
   const showMinimalToast = showToast;
@@ -116,12 +109,13 @@ export const Composer = ({ isFocused = true }: { isFocused?: boolean }) => {
       )}
 
       <Box width="100%" flexDirection="column">
+        {/* langvis：详情行由底部 LangvisStatusLine 承担；StatusRow 只留 loading/tips 最小行 */}
         <StatusRow
-          showUiDetails={showUiDetails}
+          showUiDetails={false}
           isNarrow={isNarrow}
           terminalWidth={terminalWidth}
-          hideContextSummary={hideContextSummary}
-          hideUiDetailsForSuggestions={hideUiDetailsForSuggestions}
+          hideContextSummary
+          hideUiDetailsForSuggestions
           hasPendingActionRequired={hasPendingActionRequired}
         />
       </Box>
@@ -175,9 +169,7 @@ export const Composer = ({ isFocused = true }: { isFocused?: boolean }) => {
         />
       )}
 
-      {showUiDetails &&
-        !settings.merged.ui.hideFooter &&
-        !isScreenReaderEnabled && <Footer />}
+      {showUiDetails && !isScreenReaderEnabled && <LangvisStatusLine />}
     </Box>
   );
 };

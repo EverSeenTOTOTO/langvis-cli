@@ -375,7 +375,10 @@ class LangvisSession {
                 content: fe.content.slice(0, 160),
                 status: 'running',
               });
-            } else if (fe.type === 'tool_call' && typeof fe.toolName === 'string') {
+            } else if (
+              fe.type === 'tool_call' &&
+              typeof fe.toolName === 'string'
+            ) {
               child.activities.push({
                 id: fe.callId ?? `${childRunId}:c${child.activities.length}`,
                 type: 'tool_call',
@@ -387,9 +390,13 @@ class LangvisSession {
               (fe.type === 'tool_result' || fe.type === 'tool_error') &&
               typeof fe.callId === 'string'
             ) {
-              const act = child.activities.find(a => a.id === fe.callId);
-              if (act) act.status = fe.type === 'tool_error' ? 'error' : 'completed';
-            } else if (fe.type === 'text_chunk' && typeof fe.content === 'string') {
+              const act = child.activities.find((a) => a.id === fe.callId);
+              if (act)
+                act.status = fe.type === 'tool_error' ? 'error' : 'completed';
+            } else if (
+              fe.type === 'text_chunk' &&
+              typeof fe.content === 'string'
+            ) {
               child.result = (child.result ?? '') + fe.content;
             } else if (fe.type === 'final') {
               child.state = 'completed';
@@ -446,8 +453,10 @@ class LangvisSession {
           // diff 渲染：observation 带 old/new → DisplayDiff（渲染器现成）
           const o = asRecordish(ev.output);
           const path = typeof o?.['path'] === 'string' ? o['path'] : undefined;
-          const before = typeof o?.['oldString'] === 'string' ? o['oldString'] : undefined;
-          const after = typeof o?.['newString'] === 'string' ? o['newString'] : undefined;
+          const before =
+            typeof o?.['oldString'] === 'string' ? o['oldString'] : undefined;
+          const after =
+            typeof o?.['newString'] === 'string' ? o['newString'] : undefined;
           if (path && before !== undefined && after !== undefined) {
             return [
               {
@@ -456,18 +465,24 @@ class LangvisSession {
                 type: 'tool_response',
                 requestId: ev.callId,
                 name: ev.toolName,
-                content: [
-                  { type: 'text', text: `edited ${path}` },
-                ],
+                content: [{ type: 'text', text: `edited ${path}` }],
                 display: {
                   name: ev.toolName,
-                  result: { type: 'diff', path, beforeText: before, afterText: after },
+                  result: {
+                    type: 'diff',
+                    path,
+                    beforeText: before,
+                    afterText: after,
+                  },
                 },
               },
             ];
           }
         }
-        if (ev.toolName === 'response_user' || this.silencedCalls.has(ev.callId)) {
+        if (
+          ev.toolName === 'response_user' ||
+          this.silencedCalls.has(ev.callId)
+        ) {
           return [];
         }
         return [
@@ -483,7 +498,10 @@ class LangvisSession {
         ];
 
       case 'tool_error':
-        if (ev.toolName === 'response_user' || this.silencedCalls.has(ev.callId)) {
+        if (
+          ev.toolName === 'response_user' ||
+          this.silencedCalls.has(ev.callId)
+        ) {
           return [];
         }
         return [
@@ -500,16 +518,14 @@ class LangvisSession {
         ];
 
       case 'final':
-        return [
-          { ...base, id: id(), type: 'agent_end', reason: 'completed' },
-        ];
+        return [{ ...base, id: id(), type: 'agent_end', reason: 'completed' }];
 
       case 'cancelled':
-        return [
-          { ...base, id: id(), type: 'agent_end', reason: 'aborted' },
-        ];
+        return [{ ...base, id: id(), type: 'agent_end', reason: 'aborted' }];
 
       case 'error':
+        // error 即终态（后端 fail 后不补发 final）——必须跟 agent_end，
+        // 否则 UI 的 streamingState 吊死在 Thinking
         return [
           {
             ...base,
@@ -519,6 +535,7 @@ class LangvisSession {
             message: ev.error,
             fatal: true,
           },
+          { ...base, id: id(), type: 'agent_end', reason: 'failed' },
         ];
 
       case 'audio':
@@ -622,16 +639,16 @@ let session: LangvisSession | undefined;
 
 function getSession(): LangvisSession {
   if (!conversationId) {
-    throw new Error('langvis: conversation not bound (call setLangvisConversation first)');
+    throw new Error(
+      'langvis: conversation not bound (call setLangvisConversation first)',
+    );
   }
   session ??= new LangvisSession(conversationId);
   return session;
 }
 
 export class LegacyAgentProtocol implements AgentProtocol {
-  constructor(
-    _opts?: { config?: unknown; getPreferredEditor?: unknown },
-  ) {
+  constructor(_opts?: { config?: unknown; getPreferredEditor?: unknown }) {
     void _opts;
   }
 
@@ -712,14 +729,11 @@ function strOf(v: unknown): string | undefined {
   return typeof v === 'string' ? v : undefined;
 }
 
-function describeArgs(
-  name: string,
-  args: Record<string, unknown>,
-): string {
+function describeArgs(name: string, args: Record<string, unknown>): string {
   const keys = Object.keys(args);
   if (keys.length === 0) return name;
   const first = args[keys[0]];
   const preview =
-    typeof first === 'string' ? first : JSON.stringify(first) ?? '';
+    typeof first === 'string' ? first : (JSON.stringify(first) ?? '');
   return `${name} ${preview}`.slice(0, 120);
 }

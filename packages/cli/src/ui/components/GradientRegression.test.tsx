@@ -9,7 +9,6 @@ import { renderWithProviders } from '../../test-utils/render.js';
 import * as SessionContext from '../contexts/SessionContext.js';
 import { type SessionStatsState } from '../contexts/SessionContext.js';
 import { Banner } from './Banner.js';
-import { Footer } from './Footer.js';
 import { AppHeader } from './AppHeader.js';
 import { ModelDialog } from './ModelDialog.js';
 import { StatsDisplay } from './StatsDisplay.js';
@@ -101,21 +100,6 @@ describe('Gradient Crash Regression Tests', () => {
       },
     );
     expect(lastFrame()).toBeDefined();
-    unmount();
-  });
-
-  it('<Footer /> should not crash when theme.ui.gradient has only one color (or empty) and nightly is true', async () => {
-    const { lastFrame, unmount } = await renderWithProviders(<Footer />, {
-      width: 120,
-      uiState: {
-        nightly: true, // Enable nightly to trigger Gradient usage logic
-        sessionStats: mockSessionStats,
-      },
-    });
-    // If it crashes, this line won't be reached or lastFrame() will throw
-    expect(lastFrame()).toBeDefined();
-    // It should fall back to rendering text without gradient
-    expect(lastFrame()).not.toContain('Gradient');
     unmount();
   });
 

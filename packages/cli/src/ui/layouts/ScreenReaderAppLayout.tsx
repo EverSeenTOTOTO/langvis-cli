@@ -10,7 +10,7 @@ import { Notifications } from '../components/Notifications.js';
 import { MainContent } from '../components/MainContent.js';
 import { DialogManager } from '../components/DialogManager.js';
 import { Composer } from '../components/Composer.js';
-import { Footer } from '../components/Footer.js';
+import { LangvisStatusLine } from '../components/LangvisStatusLine.js';
 import { ExitWarning } from '../components/ExitWarning.js';
 import { useUIState } from '../contexts/UIStateContext.js';
 import { useFlickerDetector } from '../hooks/useFlickerDetector.js';
@@ -28,7 +28,7 @@ export const ScreenReaderAppLayout: React.FC = () => {
       ref={uiState.rootUiRef}
     >
       <Notifications />
-      <Footer />
+      <LangvisStatusLine />
       <Box flexGrow={1} overflow="hidden">
         <MainContent />
       </Box>
