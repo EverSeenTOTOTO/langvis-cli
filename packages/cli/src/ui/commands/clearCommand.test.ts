@@ -18,6 +18,15 @@ vi.mock('@google/gemini-cli-core', async () => {
       setLastPromptTokenCount: vi.fn(),
       clear: vi.fn(),
     },
+    // /new 换绑新会话——不发真 HTTP
+    langvisClient: {
+      createConversation: vi.fn().mockResolvedValue({
+        id: 'conv_new',
+        name: 'New chat',
+        config: {},
+        createdAt: '2026-10-02T00:00:00Z',
+      }),
+    },
   };
 });
 
@@ -40,6 +49,7 @@ describe('clearCommand', () => {
           config: {
             getEnableHooks: vi.fn().mockReturnValue(false),
             resetNewSessionState: vi.fn(),
+            setSessionId: vi.fn(),
             getMessageBus: vi.fn().mockReturnValue(undefined),
             getHookSystem: vi.fn().mockReturnValue({
               fireSessionEndEvent: vi.fn().mockResolvedValue(undefined),

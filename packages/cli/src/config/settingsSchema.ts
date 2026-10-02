@@ -232,16 +232,14 @@ const SETTINGS_SCHEMA = {
         requiresRestart: false,
         default: 'default',
         description: oneLine`
-          The default approval mode for tool execution.
-          'default' prompts for approval, 'auto_edit' auto-approves edit tools,
-          and 'plan' is read-only mode. YOLO mode (auto-approve all actions) can
-          only be enabled via command line (--yolo or --approval-mode=yolo).
+          Default approval mode for new conversations (seeded into conversation
+          config): 'default' prompts for edits and sensitive commands,
+          'auto_edit' auto-approves file reads/writes. YOLO toggles via shift+tab.
         `,
         showInDialog: true,
         options: [
           { value: 'default', label: 'Default' },
           { value: 'auto_edit', label: 'Auto Edit' },
-          { value: 'plan', label: 'Plan' },
         ],
       },
       devtools: {
@@ -253,15 +251,6 @@ const SETTINGS_SCHEMA = {
         description: 'Enable DevTools inspector on launch.',
         showInDialog: false,
       },
-      enableAutoUpdate: {
-        type: 'boolean',
-        label: 'Enable Auto Update',
-        category: 'General',
-        requiresRestart: false,
-        default: true,
-        description: 'Enable automatic updates.',
-        showInDialog: true,
-      },
       enableAutoUpdateNotification: {
         type: 'boolean',
         label: 'Enable Auto Update Notification',
@@ -270,31 +259,6 @@ const SETTINGS_SCHEMA = {
         default: true,
         description: 'Enable update notification prompts.',
         showInDialog: false,
-      },
-      enableNotifications: {
-        type: 'boolean',
-        label: 'Enable Terminal Notifications',
-        category: 'General',
-        requiresRestart: false,
-        default: false,
-        description:
-          'Enable terminal run-event notifications for action-required prompts and session completion.',
-        showInDialog: true,
-      },
-      notificationMethod: {
-        type: 'enum',
-        label: 'Terminal Notification Method',
-        category: 'General',
-        requiresRestart: false,
-        default: 'auto',
-        description: 'How to send terminal notifications.',
-        showInDialog: true,
-        options: [
-          { value: 'auto', label: 'Auto' },
-          { value: 'osc9', label: 'OSC 9' },
-          { value: 'osc777', label: 'OSC 777' },
-          { value: 'bell', label: 'Bell' },
-        ],
       },
       checkpointing: {
         type: 'object',
@@ -343,7 +307,7 @@ const SETTINGS_SCHEMA = {
             default: undefined as string | undefined,
             description:
               'The directory where planning artifacts are stored. If not specified, defaults to the system temporary directory. A custom directory requires a policy to allow write access in Plan Mode.',
-            showInDialog: true,
+            showInDialog: false,
           },
           modelRouting: {
             type: 'boolean',
@@ -353,29 +317,9 @@ const SETTINGS_SCHEMA = {
             default: true,
             description:
               'Automatically switch between Pro and Flash models based on Plan Mode status. Uses Pro for the planning phase and Flash for the implementation phase.',
-            showInDialog: true,
+            showInDialog: false,
           },
         },
-      },
-      retryFetchErrors: {
-        type: 'boolean',
-        label: 'Retry Fetch Errors',
-        category: 'General',
-        requiresRestart: false,
-        default: true,
-        description:
-          'Retry on "exception TypeError: fetch failed sending request" errors.',
-        showInDialog: true,
-      },
-      maxAttempts: {
-        type: 'number',
-        label: 'Max Chat Model Attempts',
-        category: 'General',
-        requiresRestart: false,
-        default: 10,
-        description:
-          'Maximum number of attempts for requests to the main chat model. Cannot exceed 10.',
-        showInDialog: true,
       },
       debugKeystrokeLogging: {
         type: 'boolean',
@@ -401,7 +345,7 @@ const SETTINGS_SCHEMA = {
             requiresRestart: false,
             default: true as boolean,
             description: 'Enable automatic session cleanup',
-            showInDialog: true,
+            showInDialog: false,
           },
           maxAge: {
             type: 'string',
@@ -411,7 +355,7 @@ const SETTINGS_SCHEMA = {
             default: '30d' as string,
             description:
               'Automatically delete chats older than this time period (e.g., "30d", "7d", "24h", "1w")',
-            showInDialog: true,
+            showInDialog: false,
           },
           maxCount: {
             type: 'number',
@@ -434,26 +378,6 @@ const SETTINGS_SCHEMA = {
           },
         },
         description: 'Settings for automatic session cleanup.',
-      },
-      topicUpdateNarration: {
-        type: 'boolean',
-        label: 'Topic & Update Narration',
-        category: 'General',
-        requiresRestart: false,
-        default: true,
-        description:
-          'Enable the Topic & Update communication model for reduced chattiness and structured progress reporting.',
-        showInDialog: true,
-      },
-      logRagSnippets: {
-        type: 'boolean',
-        label: 'Log RAG Snippets',
-        category: 'General',
-        requiresRestart: false,
-        default: false,
-        description:
-          'Log full Code Customization (RAG) retrieved snippets to a local file for debugging.',
-        showInDialog: true,
       },
     },
   },
@@ -728,24 +652,6 @@ const SETTINGS_SCHEMA = {
           'Use an alternate screen buffer for the UI, preserving shell history.',
         showInDialog: true,
       },
-      renderProcess: {
-        type: 'boolean',
-        label: 'Render Process',
-        category: 'UI',
-        requiresRestart: true,
-        default: true,
-        description: 'Enable Ink render process for the UI.',
-        showInDialog: true,
-      },
-      terminalBuffer: {
-        type: 'boolean',
-        label: 'Terminal Buffer',
-        category: 'UI',
-        requiresRestart: true,
-        default: false,
-        description: 'Use the new terminal buffer architecture for rendering.',
-        showInDialog: true,
-      },
       useBackgroundColor: {
         type: 'boolean',
         label: 'Use Background Color',
@@ -844,7 +750,7 @@ const SETTINGS_SCHEMA = {
             default: false,
             description:
               'Render output in plain-text to be more screen reader accessible',
-            showInDialog: true,
+            showInDialog: false,
           },
         },
       },
@@ -867,7 +773,7 @@ const SETTINGS_SCHEMA = {
         requiresRestart: true,
         default: false,
         description: 'Enable IDE integration mode.',
-        showInDialog: true,
+        showInDialog: false,
       },
       hasSeenNudge: {
         type: 'boolean',
@@ -922,24 +828,6 @@ const SETTINGS_SCHEMA = {
     description: 'Billing and AI credits settings.',
     showInDialog: false,
     properties: {
-      overageStrategy: {
-        type: 'enum',
-        label: 'Overage Strategy',
-        category: 'Advanced',
-        requiresRestart: false,
-        default: 'ask',
-        description: oneLine`
-          How to handle quota exhaustion when AI credits are available.
-          'ask' prompts each time, 'always' automatically uses credits,
-          'never' disables credit usage.
-        `,
-        showInDialog: true,
-        options: [
-          { value: 'ask', label: 'Ask each time' },
-          { value: 'always', label: 'Always use credits' },
-          { value: 'never', label: 'Never use credits' },
-        ],
-      },
       vertexAi: {
         type: 'object',
         label: 'Vertex AI',
@@ -1000,16 +888,6 @@ const SETTINGS_SCHEMA = {
         description: 'The Gemini model to use for conversations.',
         showInDialog: true,
       },
-      maxSessionTurns: {
-        type: 'number',
-        label: 'Max Session Turns',
-        category: 'Model',
-        requiresRestart: false,
-        default: -1,
-        description:
-          'Maximum number of user/model/tool turns to keep in a session. -1 means unlimited.',
-        showInDialog: true,
-      },
       summarizeToolOutput: {
         type: 'object',
         label: 'Summarize Tool Output',
@@ -1030,36 +908,6 @@ const SETTINGS_SCHEMA = {
             'Per-tool summarization settings with an optional tokenBudget.',
           ref: 'SummarizeToolOutputSettings',
         },
-      },
-      compressionThreshold: {
-        type: 'number',
-        label: 'Context Compression Threshold',
-        category: 'Model',
-        requiresRestart: true,
-        default: 0.5 as number,
-        description:
-          'The fraction of context usage at which to trigger context compression (e.g. 0.2, 0.3).',
-        showInDialog: true,
-        unit: '%',
-      },
-      disableLoopDetection: {
-        type: 'boolean',
-        label: 'Disable Loop Detection',
-        category: 'Model',
-        requiresRestart: true,
-        default: false,
-        description:
-          'Disable automatic detection and prevention of infinite loops.',
-        showInDialog: true,
-      },
-      skipNextSpeakerCheck: {
-        type: 'boolean',
-        label: 'Skip Next Speaker Check',
-        category: 'Model',
-        requiresRestart: false,
-        default: true,
-        description: 'Skip the next speaker check.',
-        showInDialog: true,
       },
     },
   },
@@ -1281,26 +1129,6 @@ const SETTINGS_SCHEMA = {
               'The maximum number of tool calls allowed per browser task. Enforcement is hard: the agent will be terminated when the limit is reached.',
             showInDialog: false,
           },
-          confirmSensitiveActions: {
-            type: 'boolean',
-            label: 'Confirm Sensitive Actions',
-            category: 'Advanced',
-            requiresRestart: true,
-            default: false,
-            description:
-              'Require manual confirmation for sensitive browser actions (e.g., fill_form, evaluate_script).',
-            showInDialog: true,
-          },
-          blockFileUploads: {
-            type: 'boolean',
-            label: 'Block File Uploads',
-            category: 'Advanced',
-            requiresRestart: true,
-            default: false,
-            description:
-              'Hard-block file upload requests from the browser agent.',
-            showInDialog: true,
-          },
         },
       },
     },
@@ -1491,26 +1319,6 @@ const SETTINGS_SCHEMA = {
         `,
         showInDialog: false,
       },
-      sandboxAllowedPaths: {
-        type: 'array',
-        label: 'Sandbox Allowed Paths',
-        category: 'Tools',
-        requiresRestart: true,
-        default: [] as string[],
-        description:
-          'List of additional paths that the sandbox is allowed to access.',
-        showInDialog: true,
-        items: { type: 'string' },
-      },
-      sandboxNetworkAccess: {
-        type: 'boolean',
-        label: 'Sandbox Network Access',
-        category: 'Tools',
-        requiresRestart: true,
-        default: false,
-        description: 'Whether the sandbox is allowed to access the network.',
-        showInDialog: true,
-      },
       shell: {
         type: 'object',
         label: 'Shell',
@@ -1661,16 +1469,6 @@ const SETTINGS_SCHEMA = {
         `,
         showInDialog: false,
       },
-      useRipgrep: {
-        type: 'boolean',
-        label: 'Use Ripgrep',
-        category: 'Tools',
-        requiresRestart: false,
-        default: true,
-        description:
-          'Use ripgrep for file content search instead of the fallback implementation. Provides faster search performance.',
-        showInDialog: true,
-      },
       truncateToolOutputThreshold: {
         type: 'number',
         label: 'Tool Output Truncation Threshold',
@@ -1679,18 +1477,6 @@ const SETTINGS_SCHEMA = {
         default: DEFAULT_TRUNCATE_TOOL_OUTPUT_THRESHOLD,
         description:
           'Maximum characters to show when truncating large tool outputs. Set to 0 or negative to disable truncation.',
-        showInDialog: true,
-      },
-      disableLLMCorrection: {
-        type: 'boolean',
-        label: 'Disable LLM Correction',
-        category: 'Tools',
-        requiresRestart: true,
-        default: true,
-        description: oneLine`
-          Disable LLM-based error correction for edit tools.
-          When enabled, tools will fail immediately if exact string matches are not found, instead of attempting to self-correct.
-        `,
         showInDialog: true,
       },
     },
@@ -1755,16 +1541,6 @@ const SETTINGS_SCHEMA = {
     description: 'Security-related settings.',
     showInDialog: false,
     properties: {
-      toolSandboxing: {
-        type: 'boolean',
-        label: 'Tool Sandboxing',
-        category: 'Security',
-        requiresRestart: true,
-        default: false,
-        description:
-          'Tool-level sandboxing. Isolates individual tools instead of the entire CLI process.',
-        showInDialog: true,
-      },
       disableYoloMode: {
         type: 'boolean',
         label: 'Disable YOLO Mode',
@@ -1773,58 +1549,6 @@ const SETTINGS_SCHEMA = {
         default: false,
         description: 'Disable YOLO mode, even if enabled by a flag.',
         showInDialog: true,
-      },
-      disableAlwaysAllow: {
-        type: 'boolean',
-        label: 'Disable Always Allow',
-        category: 'Security',
-        requiresRestart: true,
-        default: false,
-        description:
-          'Disable "Always allow" options in tool confirmation dialogs.',
-        showInDialog: true,
-      },
-      enablePermanentToolApproval: {
-        type: 'boolean',
-        label: 'Allow Permanent Tool Approval',
-        category: 'Security',
-        requiresRestart: false,
-        default: false,
-        description:
-          'Enable the "Allow for all future sessions" option in tool confirmation dialogs.',
-        showInDialog: true,
-      },
-      autoAddToPolicyByDefault: {
-        type: 'boolean',
-        label: 'Auto-add to Policy by Default',
-        category: 'Security',
-        requiresRestart: false,
-        default: false,
-        description: oneLine`
-          When enabled, the "Allow for all future sessions" option becomes the
-          default choice for low-risk tools in trusted workspaces.
-        `,
-        showInDialog: true,
-      },
-      blockGitExtensions: {
-        type: 'boolean',
-        label: 'Blocks extensions from Git',
-        category: 'Security',
-        requiresRestart: true,
-        default: false,
-        description: 'Blocks installing and loading extensions from Git.',
-        showInDialog: true,
-      },
-      allowedExtensions: {
-        type: 'array',
-        label: 'Extension Source Regex Allowlist',
-        category: 'Security',
-        requiresRestart: true,
-        default: [] as string[],
-        description:
-          'List of Regex patterns for allowed extensions. If nonempty, only extensions that match the patterns in this list are allowed. Overrides the blockGitExtensions setting.',
-        showInDialog: true,
-        items: { type: 'string' },
       },
       folderTrust: {
         type: 'object',
@@ -1927,16 +1651,6 @@ const SETTINGS_SCHEMA = {
           },
         },
       },
-      enableConseca: {
-        type: 'boolean',
-        label: 'Enable Context-Aware Security',
-        category: 'Security',
-        requiresRestart: true,
-        default: false,
-        description:
-          'Enable the context-aware security checker. This feature uses an LLM to dynamically generate and enforce security policies for tool use based on your prompt, providing an additional layer of protection against unintended actions.',
-        showInDialog: true,
-      },
     },
   },
 
@@ -2011,25 +1725,6 @@ const SETTINGS_SCHEMA = {
     description: 'Setting to enable experimental features',
     showInDialog: false,
     properties: {
-      gemma: {
-        type: 'boolean',
-        label: 'Gemma Models',
-        category: 'Experimental',
-        requiresRestart: true,
-        default: true,
-        description: 'Enable access to Gemma 4 models via Gemini API.',
-        showInDialog: true,
-      },
-      voiceMode: {
-        type: 'boolean',
-        label: 'Voice Mode',
-        category: 'Experimental',
-        requiresRestart: false,
-        default: false,
-        description:
-          'Enable experimental voice dictation and commands (/voice, /voice model).',
-        showInDialog: true,
-      },
       voice: {
         type: 'object',
         label: 'Voice',
@@ -2038,72 +1733,7 @@ const SETTINGS_SCHEMA = {
         default: {},
         description: 'Settings for voice mode and transcription.',
         showInDialog: false,
-        properties: {
-          activationMode: {
-            type: 'enum',
-            label: 'Voice Activation Mode',
-            category: 'Experimental',
-            requiresRestart: false,
-            default: 'push-to-talk',
-            description: 'How to trigger voice recording with the Space key.',
-            showInDialog: true,
-            options: [
-              { value: 'push-to-talk', label: 'Push-To-Talk (Hold Space)' },
-              { value: 'toggle', label: 'Toggle (Press Space to start/stop)' },
-            ],
-          },
-          backend: {
-            type: 'enum',
-            label: 'Voice Transcription Backend',
-            category: 'Experimental',
-            requiresRestart: false,
-            default: 'gemini-live',
-            description: oneLine`
-              The backend to use for voice transcription. Note: When using the
-              Gemini Live backend, voice recordings are sent to Google Cloud for
-              transcription.
-            `,
-            showInDialog: true,
-            options: [
-              { value: 'gemini-live', label: 'Gemini Live API (Cloud)' },
-              { value: 'whisper', label: 'Whisper (Local)' },
-            ],
-          },
-          whisperModel: {
-            type: 'enum',
-            label: 'Whisper Model',
-            category: 'Experimental',
-            requiresRestart: false,
-            default: 'ggml-base.en.bin',
-            description: 'The Whisper model to use for local transcription.',
-            showInDialog: true,
-            options: [
-              { value: 'ggml-tiny.en.bin', label: 'Tiny (EN) - Fast (~75MB)' },
-              {
-                value: 'ggml-base.en.bin',
-                label: 'Base (EN) - Balanced (~142MB)',
-              },
-              {
-                value: 'ggml-large-v3-turbo-q5_0.bin',
-                label: 'Large v3 Turbo (Q5_0) - High Accuracy (~547MB)',
-              },
-              {
-                value: 'ggml-large-v3-turbo-q8_0.bin',
-                label: 'Large v3 Turbo (Q8_0) - Max Accuracy (~834MB)',
-              },
-            ],
-          },
-          stopGracePeriodMs: {
-            type: 'number',
-            label: 'Voice Stop Grace Period (ms)',
-            category: 'Experimental',
-            requiresRestart: false,
-            default: 4000,
-            description:
-              'How long to wait for final transcription after stopping recording.',
-            showInDialog: true,
-          },
-        },
+        properties: {},
       },
       adk: {
         type: 'object',
@@ -2153,16 +1783,6 @@ const SETTINGS_SCHEMA = {
         default: true,
         description: 'Enable local and remote subagents.',
         showInDialog: false,
-      },
-      worktrees: {
-        type: 'boolean',
-        label: 'Enable Git Worktrees',
-        category: 'Experimental',
-        requiresRestart: true,
-        default: false,
-        description:
-          'Enable automated Git worktree management for parallel work.',
-        showInDialog: true,
       },
       extensionManagement: {
         type: 'boolean',
@@ -2240,26 +1860,6 @@ const SETTINGS_SCHEMA = {
         description: 'Enable task tracker tools.',
         showInDialog: false,
       },
-      modelSteering: {
-        type: 'boolean',
-        label: 'Model Steering',
-        category: 'Experimental',
-        requiresRestart: false,
-        default: false,
-        description:
-          'Enable model steering (user hints) to guide the model during tool execution.',
-        showInDialog: true,
-      },
-      directWebFetch: {
-        type: 'boolean',
-        label: 'Direct Web Fetch',
-        category: 'Experimental',
-        requiresRestart: true,
-        default: false,
-        description:
-          'Enable web fetch behavior that bypasses LLM summarization.',
-        showInDialog: true,
-      },
       dynamicModelConfiguration: {
         type: 'boolean',
         label: 'Dynamic Model Configuration',
@@ -2269,77 +1869,6 @@ const SETTINGS_SCHEMA = {
         description:
           'Enable dynamic model configuration (definitions, resolutions, and chains) via settings.',
         showInDialog: false,
-      },
-      gemmaModelRouter: {
-        type: 'object',
-        label: 'Gemma Model Router',
-        category: 'Experimental',
-        requiresRestart: true,
-        default: {},
-        description: 'Enable Gemma model router (experimental).',
-        showInDialog: false,
-        properties: {
-          enabled: {
-            type: 'boolean',
-            label: 'Enable Gemma Model Router',
-            category: 'Experimental',
-            requiresRestart: true,
-            default: false,
-            description:
-              'Enable the Gemma Model Router (experimental). Requires a local endpoint serving Gemma via the Gemini API using LiteRT-LM shim.',
-            showInDialog: true,
-          },
-          autoStartServer: {
-            type: 'boolean',
-            label: 'Auto-start LiteRT Server',
-            category: 'Experimental',
-            requiresRestart: true,
-            default: false,
-            description:
-              'Automatically start the LiteRT-LM server when langvis CLI starts and the Gemma router is enabled.',
-            showInDialog: true,
-          },
-          binaryPath: {
-            type: 'string',
-            label: 'LiteRT Binary Path',
-            category: 'Experimental',
-            requiresRestart: true,
-            default: '',
-            description:
-              'Custom path to the LiteRT-LM binary. Leave empty to use the default location (~/.gemini/bin/litert/).',
-            showInDialog: false,
-          },
-          classifier: {
-            type: 'object',
-            label: 'Classifier',
-            category: 'Experimental',
-            requiresRestart: true,
-            default: {},
-            description: 'Classifier configuration.',
-            showInDialog: false,
-            properties: {
-              host: {
-                type: 'string',
-                label: 'Host',
-                category: 'Experimental',
-                requiresRestart: true,
-                default: 'http://localhost:9379',
-                description: 'The host of the classifier.',
-                showInDialog: false,
-              },
-              model: {
-                type: 'string',
-                label: 'Model',
-                category: 'Experimental',
-                requiresRestart: true,
-                default: 'gemma3-1b-gpu-custom',
-                description:
-                  'The model to use for the classifier. Only tested on `gemma3-1b-gpu-custom`.',
-                showInDialog: false,
-              },
-            },
-          },
-        },
       },
       stressTestProfile: {
         type: 'boolean',
@@ -2352,26 +1881,6 @@ const SETTINGS_SCHEMA = {
           'Significantly lowers token limits to force early garbage collection and distillation for testing purposes.',
         showInDialog: false,
       },
-      autoMemory: {
-        type: 'boolean',
-        label: 'Auto Memory',
-        category: 'Experimental',
-        requiresRestart: true,
-        default: false,
-        description:
-          'Automatically extract memory patches and skills from past sessions in the background. Every change is written as a unified diff `.patch` file under `<projectMemoryDir>/.inbox/<kind>/` and held for review in /memory inbox; nothing is applied until you approve it.',
-        showInDialog: true,
-      },
-      generalistProfile: {
-        type: 'boolean',
-        label: 'Use the generalist profile to manage agent contexts.',
-        category: 'Experimental',
-        requiresRestart: true,
-        default: false,
-        description:
-          'Suitable for general coding and software development tasks.',
-        showInDialog: true,
-      },
       powerUserProfile: {
         type: 'boolean',
         label: 'Use the power user profile to manage agent contexts.',
@@ -2380,15 +1889,6 @@ const SETTINGS_SCHEMA = {
         default: false,
         description: 'Less cache friendly version of the generalist profile.',
         showInDialog: false,
-      },
-      contextManagement: {
-        type: 'boolean',
-        label: 'Enable Context Management',
-        category: 'Experimental',
-        requiresRestart: true,
-        default: false,
-        description: 'Enable logic for context management.',
-        showInDialog: true,
       },
       topicUpdateNarration: {
         type: 'boolean',
@@ -2486,7 +1986,7 @@ const SETTINGS_SCHEMA = {
         default: true,
         description:
           'Canonical toggle for the hooks system. When disabled, no hooks will be executed.',
-        showInDialog: true,
+        showInDialog: false,
       },
       disabled: {
         type: 'array',
@@ -2510,7 +2010,7 @@ const SETTINGS_SCHEMA = {
         requiresRestart: false,
         default: true,
         description: 'Show visual indicators when hooks are executing.',
-        showInDialog: true,
+        showInDialog: false,
       },
     },
   },

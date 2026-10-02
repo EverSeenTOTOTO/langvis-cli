@@ -21,7 +21,6 @@ describe('settings-validation', () => {
       const validSettings = {
         model: {
           name: 'gemini-2.0-flash-exp',
-          maxSessionTurns: 10,
         },
         ui: {
           theme: 'dark',
@@ -183,9 +182,8 @@ describe('settings-validation', () => {
 
     it('should validate number fields correctly', () => {
       const validSettings = {
-        model: {
-          maxSessionTurns: 50,
-          compressionThreshold: 0.2,
+        tools: {
+          truncateToolOutputThreshold: 40000,
         },
       };
 
@@ -360,17 +358,15 @@ describe('settings-validation', () => {
 
       it('should cast numeric strings to numbers', () => {
         const settings = {
-          model: {
-            maxSessionTurns: '42',
-            compressionThreshold: '0.5',
+          tools: {
+            truncateToolOutputThreshold: '40000',
           },
         };
 
         const result = validateSettings(settings);
         expect(result.success).toBe(true);
         const data = result.data as Settings;
-        expect(data.model?.maxSessionTurns).toBe(42);
-        expect(data.model?.compressionThreshold).toBe(0.5);
+        expect(data.tools?.truncateToolOutputThreshold).toBe(40000);
       });
 
       it('should reject invalid castable strings', () => {
@@ -378,8 +374,8 @@ describe('settings-validation', () => {
           ui: {
             autoThemeSwitching: 'not-a-boolean',
           },
-          model: {
-            maxSessionTurns: 'not-a-number',
+          tools: {
+            truncateToolOutputThreshold: 'not-a-number',
           },
         };
 
@@ -485,7 +481,9 @@ describe('settings-validation', () => {
       const invalidSettings = {
         model: {
           name: { invalid: 'object' },
-          maxSessionTurns: 'not a number',
+        },
+        tools: {
+          truncateToolOutputThreshold: 'not a number',
         },
       };
 

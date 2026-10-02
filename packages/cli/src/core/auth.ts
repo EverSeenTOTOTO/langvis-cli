@@ -21,6 +21,8 @@ import {
 } from '@google/gemini-cli-core';
 
 import type { AccountSuspensionInfo } from '../ui/contexts/UIStateContext.js';
+import type { LoadedSettings } from '../config/settings.js';
+import { defaultApprovalConfig } from '../utils/langvisDefaults.js';
 
 export interface InitialAuthResult {
   authError: string | null;
@@ -86,7 +88,7 @@ export async function performInitialAuth(
  * 然后把当前 cwd 绑定到一个 conversation（复用该 workspace 最新会话，否则新建）。
  * 复用已有会话时附带 ResumedSessionData——UI 启动自动重放历史。
  */
-export async function initializeLangvis(): Promise<{
+export async function initializeLangvis(settings?: LoadedSettings): Promise<{
   conversationId: string;
   resumed?: ResumedSessionData;
 }> {
@@ -108,7 +110,12 @@ export async function initializeLangvis(): Promise<{
   // 新会话用占位名——首条消息后自动改为消息摘要（会话列表可读性）
   const existing = conversations[0];
   const conversation =
-    existing ?? (await langvisClient.createConversation('New chat', cwd));
+    existing ??
+    (await langvisClient.createConversation(
+      'New chat',
+      cwd,
+      settings ? defaultApprovalConfig(settings) : undefined,
+    ));
   setLangvisConversation(conversation.id);
   setLangvisConversationRecord(conversation);
   // 预热模型定义集与 skills——ModelDialog 动态路径、/model set、/skills 的数据源

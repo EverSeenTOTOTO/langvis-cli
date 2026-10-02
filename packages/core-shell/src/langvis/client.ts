@@ -145,12 +145,22 @@ export class LangvisClient {
     });
   }
 
-  /** 未登录抛 LangvisNotLoggedInError。 */
-  async requireSession(): Promise<void> {
-    const session = await this.request<{ user?: unknown } | null>(
+  private sessionUserCache: string | null | undefined;
+
+  /** 登录用户邮箱(缓存;未登录 null)。 */
+  async sessionUser(): Promise<string | null> {
+    if (this.sessionUserCache !== undefined) return this.sessionUserCache;
+    const session = await this.request<{ user?: { email?: unknown } } | null>(
       '/api/auth/get-session',
     );
-    if (!asRecord(session?.user)) throw new LangvisNotLoggedInError();
+    const email = asRecord(session?.user)?.['email'];
+    this.sessionUserCache = typeof email === 'string' ? email : null;
+    return this.sessionUserCache;
+  }
+
+  /** 未登录抛 LangvisNotLoggedInError。 */
+  async requireSession(): Promise<void> {
+    if (!(await this.sessionUser())) throw new LangvisNotLoggedInError();
   }
 
   // ── conversation ──
@@ -158,10 +168,11 @@ export class LangvisClient {
   async createConversation(
     name: string,
     workspacePath: string,
+    config?: Record<string, unknown>,
   ): Promise<LangvisConversation> {
     return this.request('/api/conversation', {
       method: 'POST',
-      body: JSON.stringify({ name, config: {}, workspacePath }),
+      body: JSON.stringify({ name, config: config ?? {}, workspacePath }),
     });
   }
 

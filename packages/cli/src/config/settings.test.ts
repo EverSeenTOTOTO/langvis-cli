@@ -497,7 +497,6 @@ describe('Settings Loading and Merging', () => {
           ) {
             return JSON.stringify({
               ui: { autoThemeSwitching: '$TEST_AUTO_THEME' },
-              model: { maxSessionTurns: '$TEST_MAX_TURNS' },
             });
           }
           return '{}';
@@ -507,7 +506,6 @@ describe('Settings Loading and Merging', () => {
       const settings = loadSettings(MOCK_WORKSPACE_DIR);
 
       expect(settings.merged.ui.autoThemeSwitching).toBe(false);
-      expect(settings.merged.model.maxSessionTurns).toBe(15);
       expect(settings.errors).toHaveLength(0);
     });
 
@@ -539,7 +537,7 @@ describe('Settings Loading and Merging', () => {
     });
 
     it('should record validation errors if expansion result is invalid', () => {
-      vi.stubEnv('TEST_MAX_TURNS', 'not-a-number');
+      vi.stubEnv('TEST_TRUNCATE', 'not-a-number');
 
       (mockFsExistsSync as Mock).mockImplementation(
         (p: fs.PathLike) =>
@@ -551,7 +549,7 @@ describe('Settings Loading and Merging', () => {
             path.normalize(p.toString()) === path.normalize(USER_SETTINGS_PATH)
           ) {
             return JSON.stringify({
-              model: { maxSessionTurns: '$TEST_MAX_TURNS' },
+              tools: { truncateToolOutputThreshold: '$TEST_TRUNCATE' },
             });
           }
           return '{}';
@@ -565,7 +563,9 @@ describe('Settings Loading and Merging', () => {
         'Expected number, received string',
       );
       // Should fall back to the expanded string value
-      expect(settings.merged.model.maxSessionTurns).toBe('not-a-number');
+      expect(settings.merged.tools.truncateToolOutputThreshold).toBe(
+        'not-a-number',
+      );
     });
 
     it('should preserve environment variable placeholders on save', () => {
@@ -658,19 +658,16 @@ describe('Settings Loading and Merging', () => {
       const userSettingsContent = {
         security: {
           disableYoloMode: false,
-          disableAlwaysAllow: false,
         },
       };
       const workspaceSettingsContent = {
         security: {
           disableYoloMode: false, // This should be ignored
-          disableAlwaysAllow: false, // This should be ignored
         },
       };
       const systemSettingsContent = {
         security: {
           disableYoloMode: true,
-          disableAlwaysAllow: true,
         },
       };
 
@@ -688,7 +685,7 @@ describe('Settings Loading and Merging', () => {
 
       const settings = loadSettings(MOCK_WORKSPACE_DIR);
       expect(settings.merged.security?.disableYoloMode).toBe(true); // System setting should be used
-      expect(settings.merged.security?.disableAlwaysAllow).toBe(true); // System setting should be used
+      expect(settings.merged.security?.disableYoloMode).toBe(true); // System setting should be used
     });
 
     it.each([
@@ -1180,81 +1177,6 @@ describe('Settings Loading and Merging', () => {
         expect(loaded.getConsolidatedAllowedMcpServers()).toBeUndefined();
       });
     });
-
-    describe('compressionThreshold settings', () => {
-      it.each([
-        {
-          description:
-            'should be taken from user settings if only present there',
-          userContent: { model: { compressionThreshold: 0.5 } },
-          workspaceContent: {},
-          expected: 0.5,
-        },
-        {
-          description:
-            'should be taken from workspace settings if only present there',
-          userContent: {},
-          workspaceContent: { model: { compressionThreshold: 0.8 } },
-          expected: 0.8,
-        },
-        {
-          description:
-            'should prioritize workspace settings over user settings',
-          userContent: { model: { compressionThreshold: 0.5 } },
-          workspaceContent: { model: { compressionThreshold: 0.8 } },
-          expected: 0.8,
-        },
-        {
-          description: 'should be default if not in any settings file',
-          userContent: {},
-          workspaceContent: {},
-          expected: 0.5,
-        },
-      ])('$description', ({ userContent, workspaceContent, expected }) => {
-        (mockFsExistsSync as Mock).mockReturnValue(true);
-        (fs.readFileSync as Mock).mockImplementation(
-          (p: fs.PathOrFileDescriptor) => {
-            if (normalizePath(p) === normalizePath(USER_SETTINGS_PATH))
-              return JSON.stringify(userContent);
-            if (
-              normalizePath(p) === normalizePath(MOCK_WORKSPACE_SETTINGS_PATH)
-            )
-              return JSON.stringify(workspaceContent);
-            return '{}';
-          },
-        );
-
-        const settings = loadSettings(MOCK_WORKSPACE_DIR);
-        expect(settings.merged.model?.compressionThreshold).toEqual(expected);
-      });
-    });
-
-    it('should use user compressionThreshold if workspace does not define it', () => {
-      (mockFsExistsSync as Mock).mockReturnValue(true);
-      const userSettingsContent = {
-        general: {},
-        model: { compressionThreshold: 0.5 },
-      };
-      const workspaceSettingsContent = {
-        general: {},
-        model: {},
-      };
-
-      (fs.readFileSync as Mock).mockImplementation(
-        (p: fs.PathOrFileDescriptor) => {
-          if (normalizePath(p) === normalizePath(USER_SETTINGS_PATH))
-            return JSON.stringify(userSettingsContent);
-          if (normalizePath(p) === normalizePath(MOCK_WORKSPACE_SETTINGS_PATH))
-            return JSON.stringify(workspaceSettingsContent);
-          return '{}';
-        },
-      );
-
-      const settings = loadSettings(MOCK_WORKSPACE_DIR);
-
-      expect(settings.merged.model?.compressionThreshold).toEqual(0.5);
-    });
-
     it('should merge includeDirectories from all scopes', () => {
       (mockFsExistsSync as Mock).mockReturnValue(true);
       const systemSettingsContent = {
@@ -2288,34 +2210,6 @@ describe('Settings Loading and Merging', () => {
       expect(setValueSpy).not.toHaveBeenCalled();
     });
 
-    it('should migrate general.disableAutoUpdate to general.enableAutoUpdate with inverted value', () => {
-      const userSettingsContent = {
-        general: {
-          disableAutoUpdate: true,
-        },
-      };
-
-      (fs.readFileSync as Mock).mockImplementation(
-        (p: fs.PathOrFileDescriptor) => {
-          if (normalizePath(p) === normalizePath(USER_SETTINGS_PATH))
-            return JSON.stringify(userSettingsContent);
-          return '{}';
-        },
-      );
-
-      const setValueSpy = vi.spyOn(LoadedSettings.prototype, 'setValue');
-      const loadedSettings = loadSettings(MOCK_WORKSPACE_DIR);
-
-      migrateDeprecatedSettings(loadedSettings, true);
-
-      // Should set new value to false (inverted from true)
-      expect(setValueSpy).toHaveBeenCalledWith(
-        SettingScope.User,
-        'general',
-        expect.objectContaining({ enableAutoUpdate: false }),
-      );
-    });
-
     it('should migrate tools.approvalMode to general.defaultApprovalMode', () => {
       const userSettingsContent = {
         tools: {
@@ -2554,39 +2448,6 @@ describe('Settings Loading and Merging', () => {
         ).fileFiltering,
       ).toHaveProperty('disableFuzzySearch');
     });
-
-    it('should trigger migration automatically during loadSettings', () => {
-      mockFsExistsSync.mockImplementation(
-        (p: fs.PathLike) =>
-          normalizePath(p) === normalizePath(USER_SETTINGS_PATH),
-      );
-      const userSettingsContent = {
-        general: {
-          disableAutoUpdate: true,
-        },
-      };
-      (fs.readFileSync as Mock).mockImplementation(
-        (p: fs.PathOrFileDescriptor) => {
-          if (normalizePath(p) === normalizePath(USER_SETTINGS_PATH))
-            return JSON.stringify(userSettingsContent);
-          return '{}';
-        },
-      );
-
-      const settings = loadSettings(MOCK_WORKSPACE_DIR);
-
-      // Verify it was migrated in the merged settings
-      expect(settings.merged.general?.enableAutoUpdate).toBe(false);
-
-      // Verify it was saved back to disk (via setValue calling updateSettingsFilePreservingFormat)
-      expect(updateSettingsFilePreservingFormat).toHaveBeenCalledWith(
-        USER_SETTINGS_PATH,
-        expect.objectContaining({
-          general: expect.objectContaining({ enableAutoUpdate: false }),
-        }),
-      );
-    });
-
     it('should migrate disableUpdateNag to enableAutoUpdateNotification in memory but not save for system and system defaults settings', () => {
       const systemSettingsContent = {
         general: {

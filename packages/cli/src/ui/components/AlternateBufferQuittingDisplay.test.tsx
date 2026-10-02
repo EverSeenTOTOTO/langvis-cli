@@ -14,10 +14,6 @@ import type { HistoryItem, HistoryItemWithoutId } from '../types.js';
 import { Text } from 'ink';
 import { CoreToolCallStatus } from '@google/gemini-cli-core';
 
-vi.mock('../utils/terminalSetup.js', () => ({
-  getTerminalProgram: () => null,
-}));
-
 vi.mock('../contexts/AppContext.js', async (importOriginal) => {
   const actual =
     await importOriginal<typeof import('../contexts/AppContext.js')>();

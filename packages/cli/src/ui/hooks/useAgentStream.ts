@@ -18,6 +18,7 @@ import {
   parseThought,
   CoreToolCallStatus,
   Kind,
+  type Config,
   type ThoughtSummary,
   type RetryAttemptPayload,
   type AgentEvent,
@@ -49,6 +50,7 @@ import { useKeypress } from './useKeypress.js';
 
 export interface UseAgentStreamOptions {
   agent?: AgentProtocol;
+  config?: Config;
   addItem: UseHistoryManagerReturn['addItem'];
   onCancelSubmit: (
     shouldRestorePrompt?: boolean,
@@ -72,6 +74,7 @@ export interface PendingElicitation {
  */
 export const useAgentStream = ({
   agent,
+  config,
   addItem,
   onCancelSubmit,
   isShellFocused,
@@ -183,6 +186,23 @@ export const useAgentStream = ({
                   : undefined;
           const record = getLangvisConversationRecord();
           if (!langvisMode || !record) return;
+          // disableYoloMode/secureMode 加固:UI 入口拦了,写入侧也拦
+          if (
+            langvisMode === 'yolo' &&
+            config?.isYoloModeDisabled() &&
+            record.config &&
+            (record.config as { approval?: { mode?: string } }).approval
+              ?.mode !== 'yolo'
+          ) {
+            addItem(
+              {
+                type: MessageType.ERROR,
+                text: 'YOLO mode is disabled by settings — cannot enable.',
+              },
+              Date.now(),
+            );
+            return;
+          }
           const updated = {
             ...record,
             config: {
@@ -208,7 +228,7 @@ export const useAgentStream = ({
           }
         });
     },
-    [addItem],
+    [addItem, config],
   );
 
   const handleEvent = useCallback(

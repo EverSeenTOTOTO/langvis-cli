@@ -137,8 +137,6 @@ import { useFolderTrust } from './hooks/useFolderTrust.js';
 import { useIdeTrustListener } from './hooks/useIdeTrustListener.js';
 import { type IdeIntegrationNudgeResult } from './IdeIntegrationNudge.js';
 import { appEvents, AppEvent, TransientMessageType } from '../utils/events.js';
-import { type UpdateObject } from './utils/updateCheck.js';
-import { setUpdateHandler } from '../utils/handleAutoUpdate.js';
 import {
   registerCleanup,
   removeCleanup,
@@ -161,7 +159,6 @@ import { useSettings } from './contexts/SettingsContext.js';
 import { terminalCapabilityManager } from './utils/terminalCapabilityManager.js';
 import { useInputHistoryStore } from './hooks/useInputHistoryStore.js';
 import { useBanner } from './hooks/useBanner.js';
-import { useTerminalSetupPrompt } from './utils/terminalSetup.js';
 import { useHookDisplayState } from './hooks/useHookDisplayState.js';
 import { useBackgroundTaskManager } from './hooks/useBackgroundTaskManager.js';
 import {
@@ -232,8 +229,8 @@ export const AppContainer = (props: AppContainerProps) => {
   const { config, initializationResult, resumedSessionData } = props;
   const settings = useSettings();
   const { reset } = useOverflowActions()!;
-  const notificationsEnabled = isNotificationsEnabled(settings);
-  const notificationMethod = getNotificationMethod(settings);
+  const notificationsEnabled = isNotificationsEnabled();
+  const notificationMethod = getNotificationMethod();
 
   const { setOptions, dumpCurrentFrame, startRecording, stopRecording } =
     useContext(InkAppContext);
@@ -322,7 +319,6 @@ export const AppContainer = (props: AppContainerProps) => {
   const [historyRemountKey, setHistoryRemountKey] = useState(0);
   const [settingsNonce, setSettingsNonce] = useState(0);
   const activeHooks = useHookDisplayState();
-  const [updateInfo, setUpdateInfo] = useState<UpdateObject | null>(null);
   const [isTrustedFolder, setIsTrustedFolder] = useState<boolean | undefined>(
     () => isWorkspaceTrusted(settings.merged).isTrusted,
   );
@@ -531,11 +527,6 @@ export const AppContainer = (props: AppContainerProps) => {
     };
   }, [config, resumedSessionData]);
 
-  useEffect(
-    () => setUpdateHandler(historyManager.addItem, setUpdateInfo),
-    [historyManager.addItem],
-  );
-
   // Subscribe to fallback mode and model changes from core
   useEffect(() => {
     const handleModelChanged = () => {
@@ -630,10 +621,6 @@ export const AppContainer = (props: AppContainerProps) => {
   }, [logger, initializeFromLogger]);
 
   // One-time prompt to suggest running /terminal-setup when it would help.
-  useTerminalSetupPrompt({
-    addConfirmUpdateExtensionRequest,
-    addItem: historyManager.addItem,
-  });
 
   const refreshStatic = useCallback(() => {
     if (!isAlternateBuffer && !config.getUseTerminalBuffer()) {
@@ -1174,6 +1161,7 @@ Logging in with Google... Restarting langvis CLI to continue.
   const activeStream = streamAgent
     ? // eslint-disable-next-line react-hooks/rules-of-hooks
       useAgentStream({
+        config,
         agent: streamAgent,
         addItem: historyManager.addItem,
         onCancelSubmit,
@@ -2558,7 +2546,6 @@ Logging in with Google... Restarting langvis CLI to continue.
       mainControlsRef,
       rootUiRef,
       currentIDE,
-      updateInfo,
       showIdeRestartPrompt,
       ideTrustRestartReason,
       isRestarting,
@@ -2670,7 +2657,6 @@ Logging in with Google... Restarting langvis CLI to continue.
       mainControlsRef,
       rootUiRef,
       currentIDE,
-      updateInfo,
       showIdeRestartPrompt,
       ideTrustRestartReason,
       isRestarting,

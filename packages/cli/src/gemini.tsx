@@ -424,7 +424,7 @@ export async function main() {
   let langvisConversationId: string;
   let langvisResumed: ResumedSessionData | undefined;
   try {
-    const langvisInit = await initializeLangvis();
+    const langvisInit = await initializeLangvis(settings);
     langvisConversationId = langvisInit.conversationId;
     langvisResumed = langvisInit.resumed;
     // langvis 认证由后端持有——占用 selectedType 槽位让 UI 状态机直达 Authenticated，

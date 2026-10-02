@@ -3,13 +3,8 @@
  * Copyright 2026 Google LLC
  * SPDX-License-Identifier: Apache-2.0
  */
-import type { Config } from '@google/gemini-cli-core';
-/**
- * @license
- * Copyright 2026 Google LLC
- * SPDX-License-Identifier: Apache-2.0
- */
 
+import type { Config } from '@google/gemini-cli-core';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { skillsCommand } from './skillsCommand.js';
 import { MessageType, type HistoryItemSkillsList } from '../types.js';

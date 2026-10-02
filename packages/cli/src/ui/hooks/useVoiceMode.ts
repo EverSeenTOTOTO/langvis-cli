@@ -33,7 +33,7 @@ const RELEASE_DELAY_MS = 300;
 export function useVoiceMode({
   buffer,
   config,
-  settings,
+  settings: _settings,
   setQueueErrorMessage,
   isVoiceModeEnabled,
   setVoiceModeEnabled,
@@ -77,7 +77,7 @@ export function useVoiceMode({
     const serviceToDisconnect = transcriptionServiceRef.current;
 
     if (serviceToDisconnect) {
-      const gracePeriodMs = settings.experimental.voice.stopGracePeriodMs;
+      const gracePeriodMs = 4000;
       debugLogger.debug(
         `[Voice] Draining transcription for ${gracePeriodMs}ms`,
       );
@@ -97,7 +97,7 @@ export function useVoiceMode({
     }
 
     pttStateRef.current = 'idle';
-  }, [settings.experimental.voice]);
+  }, []);
 
   const startVoiceRecording = useCallback(() => {
     if (
@@ -161,8 +161,7 @@ export function useVoiceMode({
 
       if (cleanupIfStopped()) return;
 
-      const voiceBackend =
-        settings.experimental.voice?.backend ?? 'gemini-live';
+      const voiceBackend = 'gemini-live';
 
       if (!apiKey && voiceBackend === 'gemini-live') {
         setQueueErrorMessage(
@@ -181,7 +180,7 @@ export function useVoiceMode({
       }
 
       const currentService = TranscriptionFactory.createProvider(
-        settings.experimental.voice,
+        undefined,
         apiKey,
       );
       transcriptionServiceRef.current = currentService;
@@ -256,8 +255,7 @@ export function useVoiceMode({
 
         setIsConnecting(false);
 
-        const currentVoiceBackend =
-          settings.experimental.voice?.backend ?? 'gemini-live';
+        const currentVoiceBackend = 'gemini-live';
 
         recorderRef.current?.on('data', (chunk) => {
           if (currentVoiceBackend === 'gemini-live') {
@@ -291,12 +289,7 @@ export function useVoiceMode({
     };
 
     void startAsync();
-  }, [
-    config,
-    settings.experimental.voice,
-    setQueueErrorMessage,
-    stopVoiceRecording,
-  ]);
+  }, [config, setQueueErrorMessage, stopVoiceRecording]);
 
   useEffect(
     () => () => {
@@ -320,36 +313,25 @@ export function useVoiceMode({
       const activeRecording = isRecording || isRecordingRef.current;
 
       if (activeRecording) {
-        const activationMode =
-          settings.experimental.voice?.activationMode ?? 'push-to-talk';
-
         if (keyMatchers[Command.ESCAPE](key)) {
           stopVoiceRecording();
           return true;
         }
 
         if (keyMatchers[Command.VOICE_MODE_PTT](key)) {
-          if (activationMode === 'push-to-talk') {
-            if (pttTimerRef.current) {
-              clearTimeout(pttTimerRef.current);
-            }
-            pttTimerRef.current = setTimeout(() => {
-              stopVoiceRecording();
-              pttTimerRef.current = null;
-            }, RELEASE_DELAY_MS);
-            return true;
-          } else {
-            stopVoiceRecording();
-            return true;
+          if (pttTimerRef.current) {
+            clearTimeout(pttTimerRef.current);
           }
+          pttTimerRef.current = setTimeout(() => {
+            stopVoiceRecording();
+            pttTimerRef.current = null;
+          }, RELEASE_DELAY_MS);
+          return true;
         }
         return true;
       }
 
       if (isVoiceModeEnabled) {
-        const activationMode =
-          settings.experimental.voice?.activationMode ?? 'push-to-talk';
-
         if (keyMatchers[Command.ESCAPE](key) && buffer.text === '') {
           setVoiceModeEnabled(false);
           return true;
@@ -363,32 +345,27 @@ export function useVoiceMode({
             !key.shift &&
             !key.cmd
           ) {
-            if (activationMode === 'toggle') {
-              startVoiceRecording();
+            if (pttStateRef.current === 'idle') {
+              buffer.insert(' ');
+              pttStateRef.current = 'possible-hold';
+
+              if (pttTimerRef.current) clearTimeout(pttTimerRef.current);
+              pttTimerRef.current = setTimeout(() => {
+                pttStateRef.current = 'idle';
+                pttTimerRef.current = null;
+              }, HOLD_DELAY_MS);
               return true;
-            } else {
-              if (pttStateRef.current === 'idle') {
-                buffer.insert(' ');
-                pttStateRef.current = 'possible-hold';
+            } else if (pttStateRef.current === 'possible-hold') {
+              if (pttTimerRef.current) clearTimeout(pttTimerRef.current);
+              buffer.backspace();
+              pttStateRef.current = 'recording';
+              startVoiceRecording();
 
-                if (pttTimerRef.current) clearTimeout(pttTimerRef.current);
-                pttTimerRef.current = setTimeout(() => {
-                  pttStateRef.current = 'idle';
-                  pttTimerRef.current = null;
-                }, HOLD_DELAY_MS);
-                return true;
-              } else if (pttStateRef.current === 'possible-hold') {
-                if (pttTimerRef.current) clearTimeout(pttTimerRef.current);
-                buffer.backspace();
-                pttStateRef.current = 'recording';
-                startVoiceRecording();
-
-                pttTimerRef.current = setTimeout(() => {
-                  stopVoiceRecording();
-                  pttTimerRef.current = null;
-                }, RELEASE_DELAY_MS);
-                return true;
-              }
+              pttTimerRef.current = setTimeout(() => {
+                stopVoiceRecording();
+                pttTimerRef.current = null;
+              }, RELEASE_DELAY_MS);
+              return true;
             }
           }
         }
@@ -407,7 +384,6 @@ export function useVoiceMode({
     [
       isRecording,
       isVoiceModeEnabled,
-      settings.experimental.voice,
       keyMatchers,
       stopVoiceRecording,
       startVoiceRecording,

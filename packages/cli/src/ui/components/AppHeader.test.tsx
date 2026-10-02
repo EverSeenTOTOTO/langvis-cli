@@ -15,10 +15,6 @@ import { makeFakeConfig } from '@google/gemini-cli-core';
 import crypto from 'node:crypto';
 import { _clearSessionBannersForTest } from '../hooks/useBanner.js';
 
-vi.mock('../utils/terminalSetup.js', () => ({
-  getTerminalProgram: () => null,
-}));
-
 describe('<AppHeader />', () => {
   beforeEach(() => {
     _clearSessionBannersForTest();
@@ -266,7 +262,7 @@ describe('<AppHeader />', () => {
     await waitUntilReady();
 
     // Check for block characters from the logo
-    expect(lastFrame()).toContain('▗█▀▀▜▙');
+    expect(lastFrame()).toContain('██████');
     expect(lastFrame()).toMatchSnapshot();
     unmount();
   });

@@ -108,7 +108,7 @@ const SESSIONS_PER_PAGE = 20;
 // Approximate total width reserved for non-message columns and separators
 // (prefix, index, message count, age, pipes, and padding) in a session row.
 // If the SessionItem layout changes, update this accordingly.
-const FIXED_SESSION_COLUMNS_WIDTH = 30;
+const FIXED_SESSION_COLUMNS_WIDTH = 50;
 
 import {
   SearchModeDisplay,
@@ -150,9 +150,21 @@ const SessionTableHeader = ({
       </Text>
     </Box>
     <Text color={Colors.Gray}> │ </Text>
-    <Box flexShrink={0}>
+    <Box width={13} flexShrink={0}>
+      <Text color={Colors.Gray} bold>
+        Id
+      </Text>
+    </Box>
+    <Text color={Colors.Gray}> │ </Text>
+    <Box flexGrow={1} flexBasis={0} flexShrink={0}>
       <Text color={Colors.Gray} bold>
         {state.searchQuery ? 'Match' : 'Name'}
+      </Text>
+    </Box>
+    <Text color={Colors.Gray}> │ </Text>
+    <Box flexGrow={1} flexBasis={0} flexShrink={0}>
+      <Text color={Colors.Gray} bold>
+        Last
       </Text>
     </Box>
   </Box>
@@ -243,9 +255,12 @@ const SessionItem = ({
 
   // Reserve a few characters for metadata like " (current)" so the name doesn't wrap awkwardly.
   const reservedForMeta = additionalInfo ? additionalInfo.length + 1 : 0;
-  const availableMessageWidth = Math.max(
-    20,
-    terminalWidth - FIXED_SESSION_COLUMNS_WIDTH - reservedForMeta,
+  // Name 与 Last 两列平分剩余宽度
+  const halfWidth = Math.max(
+    10,
+    Math.floor(
+      (terminalWidth - FIXED_SESSION_COLUMNS_WIDTH - reservedForMeta) / 2,
+    ),
   );
 
   const truncatedMessage =
@@ -254,11 +269,23 @@ const SessionItem = ({
       <Text color={textColor(Colors.Gray)} dimColor>
         (No messages)
       </Text>
-    ) : session.displayName.length > availableMessageWidth ? (
-      session.displayName.slice(0, availableMessageWidth - 1) + '…'
+    ) : session.displayName.length > halfWidth ? (
+      session.displayName.slice(0, halfWidth - 1) + '…'
     ) : (
       session.displayName
     ));
+
+  const lastMsg = session.lastUserMessage ?? '';
+  const truncatedLast =
+    lastMsg.length === 0 ? (
+      <Text color={textColor(Colors.Gray)} dimColor>
+        —
+      </Text>
+    ) : lastMsg.length > halfWidth ? (
+      lastMsg.slice(0, halfWidth - 1) + '…'
+    ) : (
+      lastMsg
+    );
 
   return (
     <Box
@@ -295,7 +322,16 @@ const SessionItem = ({
         {' '}
         │{' '}
       </Text>
-      <Box flexGrow={1}>
+      <Box width={13}>
+        <Text color={textColor(Colors.Gray)} dimColor={isDisabled}>
+          {session.id}
+        </Text>
+      </Box>
+      <Text color={textColor(Colors.Gray)} dimColor={isDisabled}>
+        {' '}
+        │{' '}
+      </Text>
+      <Box flexGrow={1} flexBasis={0}>
         <Text color={textColor(Colors.Comment)} dimColor={isDisabled}>
           {truncatedMessage}
           {additionalInfo && (
@@ -303,6 +339,15 @@ const SessionItem = ({
               {additionalInfo}
             </Text>
           )}
+        </Text>
+      </Box>
+      <Text color={textColor(Colors.Gray)} dimColor={isDisabled}>
+        {' '}
+        │{' '}
+      </Text>
+      <Box flexGrow={1} flexBasis={0}>
+        <Text color={textColor(Colors.Gray)} dimColor={isDisabled}>
+          {truncatedLast}
         </Text>
       </Box>
     </Box>

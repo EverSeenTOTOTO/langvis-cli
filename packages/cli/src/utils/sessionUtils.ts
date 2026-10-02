@@ -13,8 +13,8 @@ import {
   type ConversationRecord,
   type MessageRecord,
   loadConversationRecord,
-
-  langvisClient,} from '@google/gemini-cli-core';
+  langvisClient,
+} from '@google/gemini-cli-core';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { stripUnsafeCharacters } from '../ui/utils/textUtils.js';
@@ -105,6 +105,8 @@ export interface SessionInfo {
   displayName: string;
   /** Cleaned first user message content */
   firstUserMessage: string;
+  /** 最近一条对话 user 消息预览（langvis workspace 列表附加） */
+  lastUserMessage?: string | null;
   /** Whether this is the currently active session */
   isCurrentSession: boolean;
   /** Display index in the list */
@@ -373,7 +375,8 @@ export const getSessionFiles = async (
     file: c.id,
     fileName: c.id,
     startTime: c.createdAt,
-    messageCount: 0,
+    messageCount: c.messageCount ?? 0,
+    lastUserMessage: c.lastUserMessage ?? null,
     lastUpdated: c.createdAt,
     displayName: c.name,
     firstUserMessage: c.name,

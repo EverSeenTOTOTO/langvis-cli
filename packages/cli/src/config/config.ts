@@ -149,7 +149,7 @@ export function getRequestedWorktreeName(
 }
 
 export async function parseArguments(
-  settings: MergedSettings,
+  _settings: MergedSettings,
 ): Promise<CliArgs> {
   const rawArgv = hideBin(process.argv);
   const startupMessages: string[] = [];
@@ -254,12 +254,11 @@ export async function parseArguments(
       ) {
         return `Invalid values:\n  Argument: output-format, Given: "${outputFormat}", Choices: "text", "json", "stream-json"`;
       }
-      if (argv['worktree'] && !settings.experimental?.worktrees) {
-        return 'The --worktree flag is only available when experimental.worktrees is enabled in your settings.';
+      if (argv['worktree']) {
+        return 'The --worktree flag is not supported in langvis.';
       }
       return true;
     });
-
 
   yargsInstance
     .command('$0 [query..]', 'Launch langvis CLI', (yargsInstance) =>
@@ -645,7 +644,6 @@ export async function loadCliConfig(
 
   // langvis 裁剪：extension 体系整体移除——不再发现/加载本地扩展。
 
-
   const extensionPlanSettings = undefined;
 
   let extensionRegistryURI =
@@ -824,18 +822,6 @@ export async function loadCliConfig(
       ? defaultModel
       : specifiedModel || defaultModel;
   const sandboxConfig = await loadSandboxConfig(settings, argv);
-  if (sandboxConfig) {
-    const existingPaths = sandboxConfig.allowedPaths || [];
-    if (settings.tools.sandboxAllowedPaths?.length) {
-      sandboxConfig.allowedPaths = [
-        ...new Set([...existingPaths, ...settings.tools.sandboxAllowedPaths]),
-      ];
-    }
-    if (settings.tools.sandboxNetworkAccess !== undefined) {
-      sandboxConfig.networkAccess =
-        sandboxConfig.networkAccess || settings.tools.sandboxNetworkAccess;
-    }
-  }
 
   const screenReader =
     argv.screenReader !== undefined
@@ -911,11 +897,6 @@ export async function loadCliConfig(
     profileSelector = 'stressTestProfile';
   } else if (settings.experimental?.powerUserProfile) {
     profileSelector = 'powerUserProfile';
-  } else if (
-    settings.experimental?.generalistProfile ||
-    settings.experimental?.contextManagement
-  ) {
-    profileSelector = 'generalistProfile';
   }
 
   const contextManagement = {
@@ -929,7 +910,7 @@ export async function loadCliConfig(
     clientVersion: await getVersion(),
     embeddingModel: DEFAULT_GEMINI_EMBEDDING_MODEL,
     sandbox: sandboxConfig,
-    toolSandboxing: settings.security?.toolSandboxing ?? false,
+    toolSandboxing: false,
     targetDir: cwd,
     includeDirectoryTree,
     includeDirectories,
@@ -979,9 +960,7 @@ export async function loadCliConfig(
     approvalMode,
     disableYoloMode:
       settings.security?.disableYoloMode || settings.admin?.secureModeEnabled,
-    disableAlwaysAllow:
-      settings.security?.disableAlwaysAllow ||
-      settings.admin?.secureModeEnabled,
+    disableAlwaysAllow: settings.admin?.secureModeEnabled,
     showMemoryUsage: settings.ui?.showMemoryUsage || false,
     accessibility: {
       ...settings.ui?.accessibility,
@@ -1000,7 +979,6 @@ export async function loadCliConfig(
     fileDiscoveryService: fileService,
     bugCommand: settings.advanced?.bugCommand,
     model: resolvedModel,
-    maxSessionTurns: settings.model?.maxSessionTurns,
 
     listExtensions: argv.listExtensions || false,
     listSessions: argv.listSessions || false,
@@ -1011,35 +989,22 @@ export async function loadCliConfig(
     enableExtensionReloading: settings.experimental?.extensionReloading,
     enableAgents: settings.experimental?.enableAgents,
     plan: settings.general?.plan?.enabled ?? true,
-    voiceMode: settings.experimental?.voiceMode,
     tracker: settings.experimental?.taskTracker,
-    directWebFetch: settings.experimental?.directWebFetch,
     planSettings: settings.general?.plan?.directory
       ? settings.general.plan
       : (extensionPlanSettings ?? settings.general?.plan),
     enableEventDrivenScheduler: true,
     skillsSupport: settings.skills?.enabled ?? true,
     disabledSkills: settings.skills?.disabled,
-    experimentalAutoMemory: settings.experimental?.autoMemory,
-    experimentalGemma: settings.experimental?.gemma,
     contextManagement,
-    modelSteering: settings.experimental?.modelSteering,
-    topicUpdateNarration:
-      settings.general?.topicUpdateNarration ??
-      settings.experimental?.topicUpdateNarration,
     noBrowser: !!process.env['NO_BROWSER'],
     summarizeToolOutput: settings.model?.summarizeToolOutput,
     ideMode,
-    disableLoopDetection: settings.model?.disableLoopDetection,
-    compressionThreshold: settings.model?.compressionThreshold,
     folderTrust,
     interactive,
     trustedFolder,
     useBackgroundColor: settings.ui?.useBackgroundColor,
     useAlternateBuffer: settings.ui?.useAlternateBuffer,
-    useTerminalBuffer: settings.ui?.terminalBuffer,
-    useRenderProcess: settings.ui?.renderProcess,
-    useRipgrep: settings.tools?.useRipgrep,
     enableInteractiveShell: settings.tools?.shell?.enableInteractiveShell,
     shellBackgroundCompletionBehavior: settings.tools?.shell
       ?.backgroundCompletionBehavior as string | undefined,
@@ -1050,7 +1015,7 @@ export async function loadCliConfig(
     // recursive continuation turns inside GeminiClient.processTurn() that
     // conflict with ACP's explicit turn management via session/prompt,
     // causing infinite agent_thought_chunk loops.
-    skipNextSpeakerCheck: isAcpMode || settings.model?.skipNextSpeakerCheck,
+    skipNextSpeakerCheck: true,
     truncateToolOutputThreshold: settings.tools?.truncateToolOutputThreshold,
     eventEmitter: coreEvents,
     useWriteTodos: argv.useWriteTodos ?? settings.useWriteTodos,
@@ -1058,17 +1023,12 @@ export async function loadCliConfig(
       // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
       format: (argv.outputFormat ?? settings.output?.format) as OutputFormat,
     },
-    gemmaModelRouter: settings.experimental?.gemmaModelRouter,
     adk: settings.experimental?.adk,
     fakeResponses: argv.fakeResponses,
     fakeResponsesNonStrict: argv.fakeResponsesNonStrict,
     recordResponses: argv.recordResponses,
-    retryFetchErrors: settings.general?.retryFetchErrors,
-    billing: settings.billing,
     vertexAiRouting: settings.billing?.vertexAi,
-    maxAttempts: settings.general?.maxAttempts,
     ptyInfo: ptyInfo?.name,
-    disableLLMCorrection: settings.tools?.disableLLMCorrection,
     rawOutput: argv.rawOutput,
     acceptRawOutputRisk: argv.acceptRawOutputRisk,
     // langvis：模型集来自后端，恒走动态模型配置（ModelDialog 动态路径）
@@ -1092,7 +1052,7 @@ export async function loadCliConfig(
         agents: refreshedSettings.merged.agents,
       };
     },
-    enableConseca: settings.security?.enableConseca,
+    enableConseca: false,
   });
 }
 

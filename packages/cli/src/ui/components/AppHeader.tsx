@@ -18,7 +18,6 @@ import { useBanner } from '../hooks/useBanner.js';
 import { useTips } from '../hooks/useTips.js';
 import { theme } from '../semantic-colors.js';
 import { ThemedGradient } from './ThemedGradient.js';
-import { CliSpinner } from './CliSpinner.js';
 
 import { isAppleTerminal } from '@google/gemini-cli-core';
 
@@ -66,7 +65,6 @@ export const AppHeader = ({ version, showDetails = true }: AppHeaderProps) => {
     terminalWidth,
     bannerData,
     bannerVisible,
-    updateInfo,
     isConfigInitialized,
     isAuthenticating,
   } = useUIState();
@@ -122,13 +120,6 @@ export const AppHeader = ({ version, showDetails = true }: AppHeaderProps) => {
           {' '}
           (fork of gemini-cli v{UPSTREAM_VERSION})
         </Text>
-        {updateInfo?.isUpdating && (
-          <Box marginLeft={2}>
-            <Text color={theme.text.secondary}>
-              <CliSpinner /> Updating
-            </Text>
-          </Box>
-        )}
       </Box>
 
       {showDetails && (

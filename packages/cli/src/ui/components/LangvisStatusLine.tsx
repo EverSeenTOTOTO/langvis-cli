@@ -4,19 +4,45 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import path from 'node:path';
 import { Box, Text } from 'ink';
-import { ApprovalMode } from '@google/gemini-cli-core';
+import { ApprovalMode, langvisClient } from '@google/gemini-cli-core';
 import { theme } from '../semantic-colors.js';
 import { useUIState } from '../contexts/UIStateContext.js';
+import { useSettings } from '../contexts/SettingsContext.js';
 import { getAllToolCalls } from '../utils/historyUtils.js';
 
 // 紧凑状态行（仿 claude-code statusline）：左对齐单行、│ 分段、超宽截断。
 // 取代上游 Footer/详情行（右对齐散布、条目间大片留白）。
 export const LangvisStatusLine: React.FC = () => {
   const uiState = useUIState();
+  const settings = useSettings();
+  const [identity, setIdentity] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!settings.merged.ui.showUserIdentity || identity !== null) return;
+    let alive = true;
+    langvisClient
+      .sessionUser()
+      .then((email) => {
+        if (alive) setIdentity(email);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [settings.merged.ui.showUserIdentity, identity]);
+
   const parts: React.ReactNode[] = [];
+
+  if (settings.merged.ui.showUserIdentity && identity) {
+    parts.push(
+      <Text key="identity" color={theme.ui.comment}>
+        {identity}
+      </Text>,
+    );
+  }
 
   if (uiState.currentModel) {
     parts.push(

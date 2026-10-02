@@ -31,7 +31,6 @@ import { resumeCommand } from '../ui/commands/resumeCommand.js';
 import { themeCommand } from '../ui/commands/themeCommand.js';
 import { skillsCommand } from '../ui/commands/skillsCommand.js';
 import { settingsCommand } from '../ui/commands/settingsCommand.js';
-import { terminalSetupCommand } from '../ui/commands/terminalSetupCommand.js';
 import { voiceCommand } from '../ui/commands/voiceCommand.js';
 
 /**
@@ -132,7 +131,6 @@ export class BuiltinCommandLoader implements ICommandLoader {
           : [skillsCommand]
         : []),
       settingsCommand,
-      terminalSetupCommand,
       ...(this.config?.isVoiceModeEnabled() ? [voiceCommand] : []),
     ];
     handle?.end();

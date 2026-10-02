@@ -85,7 +85,6 @@ export const useComposerStatus = () => {
   const showMinimalContext = isContextUsageHigh(
     uiState.sessionStats.lastPromptTokenCount,
     uiState.currentModel,
-    settings.merged.model?.compressionThreshold,
   );
 
   const loadingPhrases = settings.merged.ui.loadingPhrases;

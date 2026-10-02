@@ -154,9 +154,7 @@ export const ToolConfirmationMessage: React.FC<
 
   const settings = useSettings();
   const activeTheme = themeManager.getActiveTheme();
-  const allowPermanentApproval =
-    settings.merged.security.enablePermanentToolApproval &&
-    !config.getDisableAlwaysAllow();
+  const allowPermanentApproval = false;
 
   const handlesOwnUI =
     confirmationDetails.type === 'ask_user' ||
@@ -536,26 +534,12 @@ export const ToolConfirmationMessage: React.FC<
       let question: React.ReactNode = '';
       const options = getOptions();
 
-      let initialIndex = 0;
+      const initialIndex = 0;
       if (isTrustedFolder && allowPermanentApproval) {
         // It is safe to allow permanent approval for info, edit, and mcp tools
         // in trusted folders because the generated policy rules are narrowed
         // to specific files, patterns, or tools (rather than allowing all access).
-        const isSafeToPersist =
-          confirmationDetails.type === 'info' ||
-          confirmationDetails.type === 'edit' ||
-          confirmationDetails.type === 'mcp';
-        if (
-          isSafeToPersist &&
-          settings.merged.security.autoAddToPolicyByDefault
-        ) {
-          const alwaysAndSaveIndex = options.findIndex(
-            (o) => o.value === ToolConfirmationOutcome.ProceedAlwaysAndSave,
-          );
-          if (alwaysAndSaveIndex !== -1) {
-            initialIndex = alwaysAndSaveIndex;
-          }
-        }
+        /* langvis: 永久审批选项已随 policy 引擎移除 */
       }
 
       if (deceptiveUrlWarningText) {

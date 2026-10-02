@@ -746,8 +746,8 @@ export function resetSettingsCacheForTesting() {
   settingsCache.clear();
 }
 
-export function isWorktreeEnabled(settings: LoadedSettings): boolean {
-  return settings.merged.experimental.worktrees;
+export function isWorktreeEnabled(_settings: LoadedSettings): boolean {
+  return false; // langvis：worktree 实验不支持
 }
 
 /**

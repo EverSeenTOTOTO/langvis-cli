@@ -55,6 +55,9 @@ export interface LangvisConversation {
   groupId?: string | null;
   workspacePath?: string | null;
   createdAt: string;
+  /** workspace 列表端点附加的统计。 */
+  messageCount?: number;
+  lastUserMessage?: string | null;
 }
 
 export interface LangvisMessage {

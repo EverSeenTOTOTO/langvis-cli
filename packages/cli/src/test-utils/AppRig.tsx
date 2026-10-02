@@ -187,15 +187,11 @@ export class AppRig {
     if (!fs.existsSync(geminiDir)) {
       fs.mkdirSync(geminiDir, { recursive: true });
     }
-    fs.writeFileSync(
-      path.join(geminiDir, 'state.json'),
-      JSON.stringify({ terminalSetupPromptShown: true }),
-    );
+    fs.writeFileSync(path.join(geminiDir, 'state.json'), JSON.stringify({}));
   }
 
   async initialize() {
     persistentStateMock.setData({
-      terminalSetupPromptShown: true,
       tipsShown: 10,
     });
 

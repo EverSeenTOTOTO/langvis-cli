@@ -5,7 +5,6 @@
  */
 
 import { debugLogger, writeToStdout } from '@google/gemini-cli-core';
-import type { LoadedSettings } from '../config/settings.js';
 import { sanitizeForDisplay } from '../ui/utils/textUtils.js';
 import { TerminalCapabilityManager } from '../ui/utils/terminalCapabilityManager.js';
 
@@ -69,12 +68,8 @@ export function buildRunEventNotificationContent(
   });
 }
 
-export function isNotificationsEnabled(settings: LoadedSettings): boolean {
-  const general = settings.merged.general as
-    | { enableNotifications?: boolean }
-    | undefined;
-
-  return general?.enableNotifications === true;
+export function isNotificationsEnabled(): boolean {
+  return false; // langvis:通知会打到服务器 OS,web 下无意义
 }
 
 export enum TerminalNotificationMethod {
@@ -84,19 +79,8 @@ export enum TerminalNotificationMethod {
   Bell = 'bell',
 }
 
-export function getNotificationMethod(
-  settings: LoadedSettings,
-): TerminalNotificationMethod {
-  switch (settings.merged.general?.notificationMethod) {
-    case TerminalNotificationMethod.Osc9:
-      return TerminalNotificationMethod.Osc9;
-    case TerminalNotificationMethod.Osc777:
-      return TerminalNotificationMethod.Osc777;
-    case TerminalNotificationMethod.Bell:
-      return TerminalNotificationMethod.Bell;
-    default:
-      return TerminalNotificationMethod.Auto;
-  }
+export function getNotificationMethod(): TerminalNotificationMethod {
+  return TerminalNotificationMethod.Bell;
 }
 
 function wrapWithPassthrough(sequence: string): string {

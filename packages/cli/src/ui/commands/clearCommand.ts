@@ -17,6 +17,7 @@ import {
 import { CommandKind, type SlashCommand } from './types.js';
 import { MessageType } from '../types.js';
 import { randomUUID } from 'node:crypto';
+import { defaultApprovalConfig } from '../../utils/langvisDefaults.js';
 
 export const clearCommand: SlashCommand = {
   name: 'clear',
@@ -64,6 +65,7 @@ export const clearCommand: SlashCommand = {
     const conversation = await langvisClient.createConversation(
       'New chat',
       process.cwd(),
+      defaultApprovalConfig(context.services.settings),
     );
     setLangvisConversation(conversation.id);
     setLangvisConversationRecord(conversation);

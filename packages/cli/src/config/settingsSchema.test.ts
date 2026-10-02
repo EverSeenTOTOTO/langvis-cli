@@ -206,11 +206,8 @@ describe('SettingsSchema', () => {
         true,
       );
       expect(getSettingsSchema().ide.properties.enabled.showInDialog).toBe(
-        true,
+        false,
       );
-      expect(
-        getSettingsSchema().general.properties.enableAutoUpdate.showInDialog,
-      ).toBe(true);
       expect(
         getSettingsSchema().ui.properties.hideWindowTitle.showInDialog,
       ).toBe(true);
@@ -400,17 +397,6 @@ describe('SettingsSchema', () => {
       ).toBe('Show the "? for shortcuts" hint above the input.');
     });
 
-    it('should have enableNotifications setting in schema', () => {
-      const setting =
-        getSettingsSchema().general.properties.enableNotifications;
-      expect(setting).toBeDefined();
-      expect(setting.type).toBe('boolean');
-      expect(setting.category).toBe('General');
-      expect(setting.default).toBe(false);
-      expect(setting.requiresRestart).toBe(false);
-      expect(setting.showInDialog).toBe(true);
-    });
-
     it('should have enableAgents setting in schema', () => {
       const setting = getSettingsSchema().experimental.properties.enableAgents;
       expect(setting).toBeDefined();
@@ -453,7 +439,7 @@ describe('SettingsSchema', () => {
       expect(setting.type).toBe('boolean');
       expect(setting.category).toBe('Advanced');
       expect(setting.default).toBe(true);
-      expect(setting.showInDialog).toBe(true);
+      expect(setting.showInDialog).toBe(false);
     });
 
     it('should have name and description in hook definitions', () => {
@@ -466,82 +452,6 @@ describe('SettingsSchema', () => {
       expect(hookItemProperties.name.type).toBe('string');
       expect(hookItemProperties.description).toBeDefined();
       expect(hookItemProperties.description.type).toBe('string');
-    });
-
-    it('should have gemmaModelRouter setting in schema', () => {
-      const gemmaModelRouter =
-        getSettingsSchema().experimental.properties.gemmaModelRouter;
-      expect(gemmaModelRouter).toBeDefined();
-      expect(gemmaModelRouter.type).toBe('object');
-      expect(gemmaModelRouter.category).toBe('Experimental');
-      expect(gemmaModelRouter.default).toEqual({});
-      expect(gemmaModelRouter.requiresRestart).toBe(true);
-      expect(gemmaModelRouter.showInDialog).toBe(false);
-      expect(gemmaModelRouter.description).toBe(
-        'Enable Gemma model router (experimental).',
-      );
-
-      const enabled = gemmaModelRouter.properties.enabled;
-      expect(enabled).toBeDefined();
-      expect(enabled.type).toBe('boolean');
-      expect(enabled.category).toBe('Experimental');
-      expect(enabled.default).toBe(false);
-      expect(enabled.requiresRestart).toBe(true);
-      expect(enabled.showInDialog).toBe(true);
-      expect(enabled.description).toBe(
-        'Enable the Gemma Model Router (experimental). Requires a local endpoint serving Gemma via the Gemini API using LiteRT-LM shim.',
-      );
-
-      const autoStartServer = gemmaModelRouter.properties.autoStartServer;
-      expect(autoStartServer).toBeDefined();
-      expect(autoStartServer.type).toBe('boolean');
-      expect(autoStartServer.category).toBe('Experimental');
-      expect(autoStartServer.default).toBe(false);
-      expect(autoStartServer.requiresRestart).toBe(true);
-      expect(autoStartServer.showInDialog).toBe(true);
-      expect(autoStartServer.description).toBe(
-        'Automatically start the LiteRT-LM server when langvis CLI starts and the Gemma router is enabled.',
-      );
-
-      const binaryPath = gemmaModelRouter.properties.binaryPath;
-      expect(binaryPath).toBeDefined();
-      expect(binaryPath.type).toBe('string');
-      expect(binaryPath.category).toBe('Experimental');
-      expect(binaryPath.default).toBe('');
-      expect(binaryPath.requiresRestart).toBe(true);
-      expect(binaryPath.showInDialog).toBe(false);
-      expect(binaryPath.description).toBe(
-        'Custom path to the LiteRT-LM binary. Leave empty to use the default location (~/.gemini/bin/litert/).',
-      );
-
-      const classifier = gemmaModelRouter.properties.classifier;
-      expect(classifier).toBeDefined();
-      expect(classifier.type).toBe('object');
-      expect(classifier.category).toBe('Experimental');
-      expect(classifier.default).toEqual({});
-      expect(classifier.requiresRestart).toBe(true);
-      expect(classifier.showInDialog).toBe(false);
-      expect(classifier.description).toBe('Classifier configuration.');
-
-      const host = classifier.properties.host;
-      expect(host).toBeDefined();
-      expect(host.type).toBe('string');
-      expect(host.category).toBe('Experimental');
-      expect(host.default).toBe('http://localhost:9379');
-      expect(host.requiresRestart).toBe(true);
-      expect(host.showInDialog).toBe(false);
-      expect(host.description).toBe('The host of the classifier.');
-
-      const model = classifier.properties.model;
-      expect(model).toBeDefined();
-      expect(model.type).toBe('string');
-      expect(model.category).toBe('Experimental');
-      expect(model.default).toBe('gemma3-1b-gpu-custom');
-      expect(model.requiresRestart).toBe(true);
-      expect(model.showInDialog).toBe(false);
-      expect(model.description).toBe(
-        'The model to use for the classifier. Only tested on `gemma3-1b-gpu-custom`.',
-      );
     });
 
     it('should have adk setting in schema', () => {

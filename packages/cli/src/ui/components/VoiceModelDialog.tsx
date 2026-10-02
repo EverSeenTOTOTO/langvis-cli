@@ -52,7 +52,7 @@ const WHISPER_MODELS = [
 export function VoiceModelDialog({
   onClose,
 }: VoiceModelDialogProps): React.JSX.Element {
-  const { settings, setSetting } = useSettingsStore();
+  const { setSetting } = useSettingsStore();
   const [view, setView] = useState<DialogView>('backend');
   const [downloadProgress, setDownloadProgress] =
     useState<WhisperModelProgress | null>(null);
@@ -64,10 +64,9 @@ export function VoiceModelDialog({
   );
   const modelManager = useMemo(() => new WhisperModelManager(), []);
 
-  const currentBackend =
-    settings.merged.experimental.voice?.backend ?? 'gemini-live';
-  const currentWhisperModel =
-    settings.merged.experimental.voice?.whisperModel ?? 'ggml-base.en.bin';
+  // voice 设置已裁剪(模式死码)——恒默认
+  const currentBackend = 'gemini-live';
+  const currentWhisperModel = 'ggml-base.en.bin';
 
   const [highlightedBackend, setHighlightedBackend] =
     useState<string>(currentBackend);
@@ -218,7 +217,7 @@ export function VoiceModelDialog({
                 items={backendOptions}
                 onSelect={handleBackendSelect}
                 onHighlight={handleBackendHighlight}
-                initialIndex={currentBackend === 'whisper' ? 1 : 0}
+                initialIndex={0}
                 showNumbers={true}
               />
               {highlightedBackend === 'gemini-live' && (

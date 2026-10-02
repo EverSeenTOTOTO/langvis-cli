@@ -172,7 +172,6 @@ const originalGeminiModel = process.env['GEMINI_MODEL'];
 const originalStdoutIsTTY = process.stdout.isTTY;
 const originalStdinIsTTY = process.stdin.isTTY;
 
-
 /** ExtensionManager 已随体系裁剪——测试内的旧 mock 面用空 stub 顶替。 */
 class ExtensionManager {
   getExtensions(): unknown[] {
@@ -263,48 +262,6 @@ describe('parseArguments', () => {
     expect(parsedArgs.sessionId).toBe('test-uuid-1234');
   });
 
-  describe('worktree', () => {
-    it('should parse --worktree flag when provided with a name', async () => {
-      process.argv = ['node', 'script.js', '--worktree', 'my-feature'];
-      const settings = createTestMergedSettings();
-      settings.experimental.worktrees = true;
-      const argv = await parseArguments(settings);
-      expect(argv.worktree).toBe('my-feature');
-    });
-
-    it('should generate a random name when --worktree is provided without a name', async () => {
-      process.argv = ['node', 'script.js', '--worktree'];
-      const settings = createTestMergedSettings();
-      settings.experimental.worktrees = true;
-      const argv = await parseArguments(settings);
-      expect(argv.worktree).toBeDefined();
-      expect(argv.worktree).not.toBe('');
-      expect(typeof argv.worktree).toBe('string');
-    });
-
-    it('should throw an error when --worktree is used but experimental.worktrees is not enabled', async () => {
-      process.argv = ['node', 'script.js', '--worktree', 'feature'];
-      const settings = createTestMergedSettings();
-      settings.experimental.worktrees = false;
-
-      vi.spyOn(process, 'exit').mockImplementation(() => {
-        throw new Error('process.exit called');
-      });
-      const mockConsoleError = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
-
-      await expect(parseArguments(settings)).rejects.toThrow(
-        'process.exit called',
-      );
-      expect(mockConsoleError).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'The --worktree flag is only available when experimental.worktrees is enabled in your settings.',
-        ),
-      );
-    });
-  });
-
   it.each([
     {
       description: 'long flags',
@@ -352,7 +309,6 @@ describe('parseArguments', () => {
       );
     },
   );
-
 
   it.each([
     {
@@ -705,11 +661,6 @@ describe('parseArguments', () => {
       'Use whoami to write a poem in file poem.md about my username in pig latin and use wc to tell me how many lines are in the poem you wrote.',
     );
   });
-
-
-
-
-
 });
 
 describe('loadCliConfig', () => {
@@ -951,26 +902,16 @@ describe('loadCliConfig', () => {
     expect(config.getApprovalMode()).toBe(ApprovalMode.DEFAULT);
   });
 
-
   describe('isAcpMode', () => {
-    it('should force skipNextSpeakerCheck to true when in ACP mode', async () => {
-      process.argv = ['node', 'script.js', '--acp'];
-      const argv = await parseArguments(createTestMergedSettings());
-      const settings = createTestMergedSettings({
-        model: { skipNextSpeakerCheck: false },
-      });
-      const config = await loadCliConfig(settings, 'test-session', argv);
-      expect(config.getSkipNextSpeakerCheck()).toBe(true);
-    });
-
-    it('should respect settings.model.skipNextSpeakerCheck when not in ACP mode', async () => {
+    it('skipNextSpeakerCheck 恒 true(langvis:多发言人检查不支持)', async () => {
       process.argv = ['node', 'script.js'];
       const argv = await parseArguments(createTestMergedSettings());
-      const settings = createTestMergedSettings({
-        model: { skipNextSpeakerCheck: false },
-      });
-      const config = await loadCliConfig(settings, 'test-session', argv);
-      expect(config.getSkipNextSpeakerCheck()).toBe(false);
+      const config = await loadCliConfig(
+        createTestMergedSettings(),
+        'test-session',
+        argv,
+      );
+      expect(config.getSkipNextSpeakerCheck()).toBe(true);
     });
   });
 });
@@ -1025,9 +966,6 @@ describe('mergeExcludeTools', () => {
     expect(result).toEqual([]);
   });
 });
-
-
-
 
 describe('loadCliConfig model selection', () => {
   beforeEach(() => {
@@ -1234,112 +1172,6 @@ describe('loadCliConfig with includeDirectories', () => {
   });
 });
 
-describe('loadCliConfig compressionThreshold', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    vi.mocked(os.homedir).mockReturnValue('/mock/home/user');
-    vi.stubEnv('GEMINI_API_KEY', 'test-api-key');
-    vi.spyOn(ExtensionManager.prototype, 'getExtensions').mockReturnValue([]);
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    vi.restoreAllMocks();
-  });
-
-  it('should pass settings to the core config', async () => {
-    process.argv = ['node', 'script.js'];
-    const argv = await parseArguments(createTestMergedSettings());
-    const settings = createTestMergedSettings({
-      model: {
-        compressionThreshold: 0.5,
-      },
-    });
-    const config = await loadCliConfig(settings, 'test-session', argv);
-    expect(await config.getCompressionThreshold()).toBe(0.5);
-  });
-
-  it('should have default compressionThreshold if not in settings', async () => {
-    process.argv = ['node', 'script.js'];
-    const argv = await parseArguments(createTestMergedSettings());
-    const settings = createTestMergedSettings();
-    const config = await loadCliConfig(settings, 'test-session', argv);
-    expect(await config.getCompressionThreshold()).toBe(0.5);
-  });
-});
-
-describe('loadCliConfig useRipgrep', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    vi.mocked(os.homedir).mockReturnValue('/mock/home/user');
-    vi.stubEnv('GEMINI_API_KEY', 'test-api-key');
-    vi.spyOn(ExtensionManager.prototype, 'getExtensions').mockReturnValue([]);
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    vi.restoreAllMocks();
-  });
-
-  it('should be true by default when useRipgrep is not set in settings', async () => {
-    process.argv = ['node', 'script.js'];
-    const argv = await parseArguments(createTestMergedSettings());
-    const settings = createTestMergedSettings();
-    const config = await loadCliConfig(settings, 'test-session', argv);
-    expect(config.getUseRipgrep()).toBe(true);
-  });
-
-  it('should be false when useRipgrep is set to false in settings', async () => {
-    process.argv = ['node', 'script.js'];
-    const argv = await parseArguments(createTestMergedSettings());
-    const settings = createTestMergedSettings({ tools: { useRipgrep: false } });
-    const config = await loadCliConfig(settings, 'test-session', argv);
-    expect(config.getUseRipgrep()).toBe(false);
-  });
-
-  it('should be true when useRipgrep is explicitly set to true in settings', async () => {
-    process.argv = ['node', 'script.js'];
-    const argv = await parseArguments(createTestMergedSettings());
-    const settings = createTestMergedSettings({ tools: { useRipgrep: true } });
-    const config = await loadCliConfig(settings, 'test-session', argv);
-    expect(config.getUseRipgrep()).toBe(true);
-  });
-});
-
-describe('loadCliConfig directWebFetch', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    vi.mocked(os.homedir).mockReturnValue('/mock/home/user');
-    vi.stubEnv('GEMINI_API_KEY', 'test-api-key');
-    vi.spyOn(ExtensionManager.prototype, 'getExtensions').mockReturnValue([]);
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    vi.restoreAllMocks();
-  });
-
-  it('should be false by default when directWebFetch is not set in settings', async () => {
-    process.argv = ['node', 'script.js'];
-    const argv = await parseArguments(createTestMergedSettings());
-    const settings = createTestMergedSettings();
-    const config = await loadCliConfig(settings, 'test-session', argv);
-    expect(config.getDirectWebFetch()).toBe(false);
-  });
-
-  it('should be true when directWebFetch is set to true in settings', async () => {
-    process.argv = ['node', 'script.js'];
-    const argv = await parseArguments(createTestMergedSettings());
-    const settings = createTestMergedSettings({
-      experimental: {
-        directWebFetch: true,
-      },
-    });
-    const config = await loadCliConfig(settings, 'test-session', argv);
-    expect(config.getDirectWebFetch()).toBe(true);
-  });
-});
-
 describe('loadCliConfig context management', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -1364,7 +1196,6 @@ describe('loadCliConfig context management', () => {
     );
     expect(config.isContextManagementEnabled()).toBe(false);
   });
-
 });
 
 describe('screenReader configuration', () => {
@@ -1418,7 +1249,6 @@ describe('screenReader configuration', () => {
     expect(config.getScreenReader()).toBe(false);
   });
 });
-
 
 describe('loadCliConfig interactive', () => {
   const originalIsTTY = process.stdin.isTTY;
@@ -1785,7 +1615,6 @@ describe('loadCliConfig approval mode', () => {
     expect(config.getApprovalMode()).toBe(ApprovalMode.PLAN);
   });
 
-
   // --- Untrusted Folder Scenarios ---
   describe('when folder is NOT trusted', () => {
     beforeEach(() => {
@@ -1874,110 +1703,6 @@ describe('loadCliConfig approval mode', () => {
       const config = await loadCliConfig(settings, 'test-session', argv);
       expect(config.getApprovalMode()).toBe(ServerConfig.ApprovalMode.YOLO);
     });
-
-    it('should respect plan mode from settings when plan is enabled', async () => {
-      process.argv = ['node', 'script.js'];
-      const settings = createTestMergedSettings({
-        general: {
-          defaultApprovalMode: 'plan',
-          plan: { enabled: true },
-        },
-      });
-      const argv = await parseArguments(settings);
-      const config = await loadCliConfig(settings, 'test-session', argv);
-      expect(config.getApprovalMode()).toBe(ServerConfig.ApprovalMode.PLAN);
-    });
-
-    it('should fall back to default if plan mode is in settings but disabled', async () => {
-      process.argv = ['node', 'script.js'];
-      const settings = createTestMergedSettings({
-        general: {
-          defaultApprovalMode: 'plan',
-          plan: { enabled: false },
-        },
-      });
-      const argv = await parseArguments(settings);
-      const config = await loadCliConfig(settings, 'test-session', argv);
-      expect(config.getApprovalMode()).toBe(ApprovalMode.DEFAULT);
-    });
-  });
-});
-
-describe('loadCliConfig gemmaModelRouter', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    vi.mocked(os.homedir).mockReturnValue('/mock/home/user');
-    vi.stubEnv('GEMINI_API_KEY', 'test-api-key');
-    vi.spyOn(ExtensionManager.prototype, 'getExtensions').mockReturnValue([]);
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    vi.restoreAllMocks();
-  });
-
-  it('should have gemmaModelRouter disabled by default', async () => {
-    process.argv = ['node', 'script.js'];
-    const argv = await parseArguments(createTestMergedSettings());
-    const settings = createTestMergedSettings();
-    const config = await loadCliConfig(settings, 'test-session', argv);
-    expect(config.getGemmaModelRouterEnabled()).toBe(false);
-  });
-
-  it('should load gemmaModelRouter settings from merged settings', async () => {
-    process.argv = ['node', 'script.js'];
-    const argv = await parseArguments(createTestMergedSettings());
-    const settings = createTestMergedSettings({
-      experimental: {
-        gemmaModelRouter: {
-          enabled: true,
-          autoStartServer: false,
-          binaryPath: '/custom/lit',
-          classifier: {
-            host: 'http://custom:1234',
-            model: 'custom-gemma',
-          },
-        },
-      },
-    });
-    const config = await loadCliConfig(settings, 'test-session', argv);
-    expect(config.getGemmaModelRouterEnabled()).toBe(true);
-    const gemmaSettings = config.getGemmaModelRouterSettings();
-    expect(gemmaSettings.autoStartServer).toBe(false);
-    expect(gemmaSettings.binaryPath).toBe('/custom/lit');
-    expect(gemmaSettings.classifier?.host).toBe('http://custom:1234');
-    expect(gemmaSettings.classifier?.model).toBe('custom-gemma');
-  });
-
-  it('should load experimental.gemma setting from merged settings', async () => {
-    process.argv = ['node', 'script.js'];
-    const argv = await parseArguments(createTestMergedSettings());
-    const settings = createTestMergedSettings({
-      experimental: {
-        gemma: true,
-      },
-    });
-    const config = await loadCliConfig(settings, 'test-session', argv);
-    expect(config.getExperimentalGemma()).toBe(true);
-  });
-
-  it('should handle partial gemmaModelRouter settings', async () => {
-    process.argv = ['node', 'script.js'];
-    const argv = await parseArguments(createTestMergedSettings());
-    const settings = createTestMergedSettings({
-      experimental: {
-        gemmaModelRouter: {
-          enabled: true,
-        },
-      },
-    });
-    const config = await loadCliConfig(settings, 'test-session', argv);
-    expect(config.getGemmaModelRouterEnabled()).toBe(true);
-    const gemmaSettings = config.getGemmaModelRouterSettings();
-    expect(gemmaSettings.autoStartServer).toBe(false);
-    expect(gemmaSettings.binaryPath).toBe('');
-    expect(gemmaSettings.classifier?.host).toBe('http://localhost:9379');
-    expect(gemmaSettings.classifier?.model).toBe('gemma3-1b-gpu-custom');
   });
 });
 
@@ -2213,8 +1938,6 @@ describe('parseArguments with positional prompt', () => {
   });
 });
 
-
-
 describe('Policy Engine Integration in loadCliConfig', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -2394,7 +2117,6 @@ describe('loadCliConfig secureModeEnabled', () => {
     expect(config.isYoloModeDisabled()).toBe(true);
   });
 });
-
 
 describe('loadCliConfig acpMode and clientName', () => {
   beforeEach(() => {

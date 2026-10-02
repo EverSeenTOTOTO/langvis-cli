@@ -370,17 +370,9 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 
   const effectivePlaceholder = useMemo(() => {
     if (!isVoiceModeEnabled) return placeholder;
-    const voiceAction =
-      (settings.experimental.voice?.activationMode ?? 'push-to-talk') ===
-      'push-to-talk'
-        ? 'hold space to talk'
-        : 'space to talk';
+    const voiceAction = 'hold space to talk';
     return `  Type your message or ${voiceAction} (Esc to exit)`;
-  }, [
-    isVoiceModeEnabled,
-    placeholder,
-    settings.experimental.voice?.activationMode,
-  ]);
+  }, [isVoiceModeEnabled, placeholder]);
 
   const showCursor =
     focus && isShellFocused && !isEmbeddedShellFocused && !copyModeEnabled;
