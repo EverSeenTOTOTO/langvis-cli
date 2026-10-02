@@ -1,17 +1,36 @@
+/**
+ * @license
+ * Copyright 2026 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ */
 const { listConversationsMock } = vi.hoisted(() => ({
   listConversationsMock: vi.fn(async () => ({
     conversations: [
-      { id: 'conv-old', name: 'Old', config: {}, createdAt: '2026-08-01T00:00:00Z' },
-      { id: 'conv-mid', name: 'Mid', config: {}, createdAt: '2026-08-15T00:00:00Z' },
-      { id: 'conv-new', name: 'New', config: {}, createdAt: '2026-09-01T00:00:00Z' },
+      {
+        id: 'conv-old',
+        name: 'Old',
+        config: {},
+        createdAt: '2026-08-01T00:00:00Z',
+      },
+      {
+        id: 'conv-mid',
+        name: 'Mid',
+        config: {},
+        createdAt: '2026-08-15T00:00:00Z',
+      },
+      {
+        id: 'conv-new',
+        name: 'New',
+        config: {},
+        createdAt: '2026-09-01T00:00:00Z',
+      },
     ],
   })),
 }));
 
 vi.mock('@google/gemini-cli-core', async (importOriginal) => {
-  const actual = await importOriginal<
-    typeof import('@google/gemini-cli-core')
-  >();
+  const actual =
+    await importOriginal<typeof import('@google/gemini-cli-core')>();
   return {
     ...actual,
     langvisClient: {
@@ -24,7 +43,12 @@ vi.mock('@google/gemini-cli-core', async (importOriginal) => {
       })),
       getMessages: vi.fn(async () => ({
         messages: [
-          { id: 'm1', role: 'user', content: 'hello', createdAt: '2026-09-01T00:00:01Z' },
+          {
+            id: 'm1',
+            role: 'user',
+            content: 'hello',
+            createdAt: '2026-09-01T00:00:01Z',
+          },
         ],
       })),
     },
@@ -54,7 +78,9 @@ import {
 describe('SessionSelector', () => {
   // langvis 化后 getSessionFiles 走后端 workspace 列表——mock 固定三会话验证解析逻辑
   const selector = () =>
-    new SessionSelector({ getProjectTempDir: () => '/tmp' } as Partial<Storage> as Storage);
+    new SessionSelector({
+      getProjectTempDir: () => '/tmp',
+    } as Partial<Storage> as Storage);
 
   it('resolves session by full UUID', async () => {
     const session = await selector().findSession('conv-mid');
@@ -89,7 +115,6 @@ describe('SessionSelector', () => {
     await expect(selector().findSession('conv-mid')).rejects.toThrow();
   });
 });
-
 
 describe('extractFirstUserMessage', () => {
   it('should extract first non-resume user message', () => {

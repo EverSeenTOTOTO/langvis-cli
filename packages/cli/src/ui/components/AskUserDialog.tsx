@@ -745,6 +745,7 @@ const ChoiceQuestionView: React.FC<ChoiceQuestionViewProps> = ({
       customBuffer,
       onEditingCustomOption,
       customOptionText,
+      question.multiSelect,
       keyMatchers,
     ],
   );

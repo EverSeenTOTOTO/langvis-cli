@@ -87,12 +87,8 @@ export async function runExitCleanup() {
   }
   cleanupFunctions.length = 0; // Clear the array
 
-  // Close persistent browser sessions before disposing config
-  try {
-    await resetBrowserSession();
-  } catch {
-    // Ignore errors during browser cleanup
-  }
+  // Close persistent browser sessions before disposing config（同步 no-op）
+  resetBrowserSession();
 
   if (configForTelemetry) {
     try {

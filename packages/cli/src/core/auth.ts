@@ -11,6 +11,13 @@ import {
   ValidationRequiredError,
   isAccountSuspendedError,
   ProjectIdRequiredError,
+  langvisClient,
+  setLangvisConversation,
+  fetchAndCacheLangvisModels,
+  fetchAndCacheLangvisSkills,
+  setLangvisConversationRecord,
+  LangvisNotLoggedInError,
+  type ResumedSessionData,
 } from '@google/gemini-cli-core';
 
 import type { AccountSuspensionInfo } from '../ui/contexts/UIStateContext.js';
@@ -74,16 +81,6 @@ export async function performInitialAuth(
 
 // ─── langvis：后端会话校验 + cwd 会话绑定 ───
 
-import {
-  langvisClient,
-  setLangvisConversation,
-  fetchAndCacheLangvisModels,
-  fetchAndCacheLangvisSkills,
-  setLangvisConversationRecord,
-  LangvisNotLoggedInError,
-  type ResumedSessionData,
-} from '@google/gemini-cli-core';
-
 /**
  * 校验 langvis 登录（cookies.json 或 LANGVIS_EMAIL/PASSWORD 兜底），
  * 然后把当前 cwd 绑定到一个 conversation（复用该 workspace 最新会话，否则新建）。
@@ -106,9 +103,8 @@ export async function initializeLangvis(): Promise<{
   }
 
   const cwd = process.cwd();
-  const { conversations } = await langvisClient.listConversationsByWorkspace(
-    cwd,
-  );
+  const { conversations } =
+    await langvisClient.listConversationsByWorkspace(cwd);
   // 新会话用占位名——首条消息后自动改为消息摘要（会话列表可读性）
   const existing = conversations[0];
   const conversation =
@@ -130,7 +126,7 @@ export async function initializeLangvis(): Promise<{
         projectHash: '',
         startTime: conversation.createdAt,
         lastUpdated: conversation.createdAt,
-        messages: messages.map(m => ({
+        messages: messages.map((m) => ({
           type: m.role === 'user' ? ('user' as const) : ('gemini' as const),
           content: [{ text: m.content }],
           id: m.id,

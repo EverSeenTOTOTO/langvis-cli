@@ -1,3 +1,8 @@
+/**
+ * @license
+ * Copyright 2026 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import type { Config } from '@google/gemini-cli-core';
 /**
  * @license
@@ -10,11 +15,7 @@ import { skillsCommand } from './skillsCommand.js';
 import { MessageType, type HistoryItemSkillsList } from '../types.js';
 import { createMockCommandContext } from '../../test-utils/mockCommandContext.js';
 import type { CommandContext } from './types.js';
-import {
-  type LoadedSettings,
-} from '../../config/settings.js';
-
-
+import { type LoadedSettings } from '../../config/settings.js';
 
 vi.mock('../../config/settings.js', async (importOriginal) => {
   const actual =
@@ -185,8 +186,4 @@ describe('skillsCommand', () => {
       .mock.calls.at(-1)![0] as HistoryItemSkillsList;
     expect(lastCall.skills).toHaveLength(2);
   });
-
-
-
-
 });
