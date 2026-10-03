@@ -165,7 +165,8 @@ export const LangvisStatusLine: React.FC = () => {
 
   return (
     <Box marginLeft={1}>
-      <Text wrap="truncate">
+      {/* 窄终端换行展示（旧 wrap="truncate" 会截断隐藏尾段） */}
+      <Text wrap="wrap">
         {parts.map((part, i) => (
           <React.Fragment key={i}>
             {i > 0 ? <Text color={theme.ui.comment}> │ </Text> : null}

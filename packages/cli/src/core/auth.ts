@@ -118,9 +118,12 @@ export async function initializeLangvis(settings?: LoadedSettings): Promise<{
     ));
   setLangvisConversation(conversation.id);
   setLangvisConversationRecord(conversation);
-  // 预热模型定义集与 skills——ModelDialog 动态路径、/model set、/skills 的数据源
-  await fetchAndCacheLangvisModels();
-  await fetchAndCacheLangvisSkills();
+  // 预热模型定义集与 skills——必须 await：Config 构造时快照 getLangvisModelDefinitions()，
+  // 缓存未就绪则 /model 对话框只剩 Manual 且永不刷新。并行化把串行两次往返压为一次。
+  await Promise.all([
+    fetchAndCacheLangvisModels(),
+    fetchAndCacheLangvisSkills(),
+  ]);
 
   // 复用已有会话：拉取历史构造 ResumedSessionData，UI 挂载后自动重放
   let resumed: ResumedSessionData | undefined;

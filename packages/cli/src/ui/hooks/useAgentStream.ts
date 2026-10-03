@@ -425,6 +425,20 @@ export const useAgentStream = ({
               total: event.data['total'],
             });
           }
+          // steering 排队确认：turn 已持久化、等当前 run 结束自动发起——可见，不再「发出就没下文」
+          if (
+            event.kind === 'queued' &&
+            typeof event.data?.['content'] === 'string'
+          ) {
+            flushPendingText();
+            addItem(
+              {
+                type: MessageType.INFO,
+                text: `⏳ queued: ${event.data['content'].slice(0, 80)}`,
+              },
+              Date.now(),
+            );
+          }
           // langvis TTS：PTY 宿主场景打可点击链接，本地手跑走系统播放器
           if (event.kind === 'audio') {
             const data = event.data as
@@ -562,12 +576,17 @@ export const useAgentStream = ({
         typeof query === 'string' ? [{ text: query }] : query,
       );
 
+      // 乐观 spinner：提交即进 Responding——不等 SSE agent_start（POST 往返 +
+      // 服务端 turn 管线 + run 启动共 1-3s，期间黑屏无反馈）。
+      // 失败回 Idle；agent_start/agent_end 事件到达后由事件流接管真实状态。
+      setStreamingState(StreamingState.Responding);
       try {
         const { streamId } = await agent.send({
           message: { content: parts },
         });
         currentStreamIdRef.current = streamId;
       } catch (err) {
+        setStreamingState(StreamingState.Idle);
         addItem(
           { type: MessageType.ERROR, text: getErrorMessage(err) },
           timestamp,
@@ -580,6 +599,7 @@ export const useAgentStream = ({
       logger,
       startNewPrompt,
       handleSlashCommand,
+      setStreamingState,
       streamingState,
     ],
   );
