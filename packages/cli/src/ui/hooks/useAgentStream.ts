@@ -245,6 +245,17 @@ export const useAgentStream = ({
           setStreamingState(StreamingState.Idle);
           flushPendingText();
           setPendingElicitation(null);
+          // 终局清扫：被取消/终止的 run 里，在飞工具永远等不来 tool_response。
+          // 不标 cancelled 则 allTerminal 门永不满足，pending 工具组永远以 in-flight 渲染。
+          setTrackedTools((prev) =>
+            prev.map((tc) =>
+              tc.status === CoreToolCallStatus.Success ||
+              tc.status === CoreToolCallStatus.Error ||
+              tc.status === CoreToolCallStatus.Cancelled
+                ? tc
+                : { ...tc, status: CoreToolCallStatus.Cancelled },
+            ),
+          );
           break;
         case 'message':
           if (event.role === 'agent') {
