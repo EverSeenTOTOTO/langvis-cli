@@ -29,6 +29,10 @@ let conversationId: string | undefined;
 export function setLangvisConversation(id: string): void {
   if (conversationId === id) return;
   conversationId = id;
+  // UI 订阅回调随会话迁移：LegacyAgentProtocol 是 UI 全期单例（AppContainer 只在
+  // mount 时 subscribe 一次），而 dispose 会清 listeners——不迁移的话 /clear 换新
+  // 会话后，新 session 零听众，run 事件全部静默丢失（消息发出、回复永不出）。
+  pendingListeners = session?.detachListeners() ?? [];
   session?.dispose();
   session = undefined;
 }
@@ -127,7 +131,16 @@ class LangvisSession {
 
   subscribe(cb: Listener): Unsubscribe {
     this.listeners.add(cb);
-    return () => this.listeners.delete(cb);
+    return () => {
+      this.listeners.delete(cb);
+      // 回调可能已随会话切换迁移到新 session（见 setLangvisConversation），一并摘除
+      if (session && session !== this) session.listeners.delete(cb);
+    };
+  }
+
+  /** 会话切换前快照订阅回调，供新 session 继承（见 setLangvisConversation）。 */
+  detachListeners(): Listener[] {
+    return [...this.listeners];
   }
 
   get events(): readonly AgentEvent[] {
@@ -636,6 +649,8 @@ class LangvisSession {
 // ─── UI 消费的协议壳（AppContainer 每次 mount new 一个，全部委托会话单例） ───
 
 let session: LangvisSession | undefined;
+// 会话切换时待迁移的订阅回调（setLangvisConversation 写入，getSession 消费）
+let pendingListeners: Listener[] = [];
 
 function getSession(): LangvisSession {
   if (!conversationId) {
@@ -644,6 +659,10 @@ function getSession(): LangvisSession {
     );
   }
   session ??= new LangvisSession(conversationId);
+  if (pendingListeners.length > 0) {
+    for (const cb of pendingListeners) session.subscribe(cb);
+    pendingListeners = [];
+  }
   return session;
 }
 
