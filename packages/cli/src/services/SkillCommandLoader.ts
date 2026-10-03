@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { type Config, ACTIVATE_SKILL_TOOL_NAME } from '@google/gemini-cli-core';
+import { type Config } from '@google/gemini-cli-core';
 import { CommandKind, type SlashCommand } from '../ui/commands/types.js';
 import { type ICommandLoader } from './types.js';
 
@@ -42,15 +42,18 @@ export class SkillCommandLoader implements ICommandLoader {
         kind: CommandKind.SKILL,
         autoExecute: true,
         extensionName: skill.extensionName,
-        action: async (_context, args) => ({
-          type: 'tool',
-          toolName: ACTIVATE_SKILL_TOOL_NAME,
-          toolArgs: { name: skill.name },
-          postSubmitPrompt:
+        // langvis: skill 执行在后端。slash 还原为 `/<skill-id> <args>` 文本上送，
+        // 由后端 prompt 约定解释为显式 skill_call 意图（正文由后端读取注入）。
+        action: async (_context, args) => {
+          const invocation =
             args.trim().length > 0
-              ? args.trim()
-              : `Use the skill ${skill.name}`,
-        }),
+              ? `/${skill.name} ${args.trim()}`
+              : `/${skill.name}`;
+          return {
+            type: 'submit_prompt' as const,
+            content: [{ text: invocation }],
+          };
+        },
       };
     });
   }
