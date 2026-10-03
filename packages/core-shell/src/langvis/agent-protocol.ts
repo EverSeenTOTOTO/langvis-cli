@@ -191,7 +191,11 @@ class LangvisSession {
   }
 
   async abort(): Promise<void> {
-    await langvisClient.cancel(this.conversationId);
+    // 取消是 best-effort：run 已结束/会话已释放时服务器 404 SESSION_NOT_FOUND
+    // 正是想要的终态——吞掉防未捕获拒绝击穿 CLI（fire-and-forget 调用方居多）。
+    await langvisClient.cancel(this.conversationId).catch((e: unknown) => {
+      debugLogger.warn('langvis cancel failed (best-effort)', e);
+    });
   }
 
   /** 占位名会话在首条消息后改为消息摘要（fire-and-forget，失败静默）。 */

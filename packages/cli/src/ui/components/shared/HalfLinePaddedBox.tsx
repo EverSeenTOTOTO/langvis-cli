@@ -68,9 +68,12 @@ const HalfLinePaddedBoxInternal: React.FC<HalfLinePaddedBoxProps> = ({
     return <>{children}</>;
   }
 
-  const noTrueColor = !supportsTrueColor();
+  // 混色插值只有 opacity<1 才真正需要 truecolor;纯色帽(opacity=1 时插值是恒等,
+  // 帽色=气泡色)chalk 会自动向 256 色降档——COLORTERM 不随 SSH 转发,不能作硬门槛,
+  // 否则无 truecolor 标志的会话整块退化为 paddingY=1(1 行消息撑成 3 行高)。
+  const needsTrueColor = backgroundOpacity < 1 && !supportsTrueColor();
 
-  if (noTrueColor) {
+  if (needsTrueColor) {
     return (
       <Box width={terminalWidth} backgroundColor={backgroundColor} paddingY={1}>
         {children}
