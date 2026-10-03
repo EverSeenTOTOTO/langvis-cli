@@ -1283,10 +1283,12 @@ Logging in with Google... Restarting langvis CLI to continue.
 
   const handleApprovalModeChangeWithUiReveal = useCallback(
     (mode: ApprovalMode) => {
-      void handleApprovalModeChange(mode);
+      // 返回 PUT outcome 供指示器确认/回滚；UI reveal 照旧即时
+      const applied = handleApprovalModeChange(mode);
       if (!cleanUiDetailsVisible) {
         revealCleanUiDetailsTemporarily(APPROVAL_MODE_REVEAL_DURATION_MS);
       }
+      return applied;
     },
     [
       handleApprovalModeChange,
@@ -2298,25 +2300,25 @@ Logging in with Google... Restarting langvis CLI to continue.
       )?.model?.modelId;
       if (!recordModel) {
         const local = config.getModel();
-        if (local) config.setModel(local);
+        // 种子路径的落库失败不打扰用户(下次种子/手动切换会再试)
+        if (local) void config.setModel(local).catch(() => {});
       } else if (recordModel !== config.getModel()) {
-        config.setModel(recordModel);
+        void config.setModel(recordModel).catch(() => {});
       }
     };
     bindLangvisRecordListener((record) => {
       seed(record.config as Record<string, unknown> | undefined);
     });
-    seed(
-      getLangvisConversationRecord()?.config,
-    );
+    seed(getLangvisConversationRecord()?.config);
   }, [config]);
 
-  const showApprovalModeIndicator = useApprovalModeIndicator({
-    config,
-    addItem: historyManager.addItem,
-    onApprovalModeChange: handleApprovalModeChangeWithUiReveal,
-    isActive: !embeddedShellFocused,
-  });
+  const { mode: showApprovalModeIndicator, pending: approvalModePending } =
+    useApprovalModeIndicator({
+      config,
+      addItem: historyManager.addItem,
+      onApprovalModeChange: handleApprovalModeChangeWithUiReveal,
+      isActive: !embeddedShellFocused,
+    });
 
   useRunEventNotifications({
     notificationsEnabled,
@@ -2533,6 +2535,7 @@ Logging in with Google... Restarting langvis CLI to continue.
       messageQueue,
       queueErrorMessage,
       showApprovalModeIndicator,
+      approvalModePending,
       allowPlanMode,
       currentModel,
       conversationUsage,
@@ -2646,6 +2649,7 @@ Logging in with Google... Restarting langvis CLI to continue.
       messageQueue,
       queueErrorMessage,
       showApprovalModeIndicator,
+      approvalModePending,
       allowPlanMode,
       contextFileNames,
       errorCount,

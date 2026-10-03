@@ -173,10 +173,11 @@ export const useAgentStream = ({
 
   // langvis：审批档位落 conversation config(approval.mode)，下一 run 生效。
   // PUT 串行化：快速连按时按序落库，最终态=最后一次按键；每次执行时现读 record 做 merge 基底。
+  // 返回值 = 本次尝试的 outcome（失败上抛给调用方回滚 UI）；链本身吞错保持存活。
   const approvalPutChainRef = useRef<Promise<void>>(Promise.resolve());
   const handleApprovalModeChange = useCallback(
-    (newApprovalMode: ApprovalMode) => {
-      approvalPutChainRef.current = approvalPutChainRef.current
+    (newApprovalMode: ApprovalMode): Promise<void> => {
+      const attempt = approvalPutChainRef.current
         .catch(() => {})
         .then(async () => {
           const langvisMode =
@@ -228,8 +229,11 @@ export const useAgentStream = ({
               },
               Date.now(),
             );
+            throw err;
           }
         });
+      approvalPutChainRef.current = attempt.catch(() => {});
+      return attempt;
     },
     [addItem, config],
   );
@@ -287,10 +291,21 @@ export const useAgentStream = ({
                   );
                   const after =
                     geminiMessageBufferRef.current.substring(splitPoint);
-                  addItem(
-                    { type: 'gemini', text: before },
-                    userMessageTimestampRef.current,
-                  );
+                  // 缓冲尾部在未闭合 code fence 内时 split point 会停在围栏起点：
+                  // fence 内的每个流式分片都产生空 before——空段不提交（否则一行空 ✦）。
+                  if (before.length > 0) {
+                    addItem(
+                      {
+                        // 沿用 pending 项类型：首段 gemini(带✦)，后续分段是续段(无✦)
+                        type:
+                          pendingHistoryItemRef.current?.type === 'gemini'
+                            ? 'gemini'
+                            : 'gemini_content',
+                        text: before,
+                      },
+                      userMessageTimestampRef.current,
+                    );
+                  }
                   geminiMessageBufferRef.current = after;
                   setPendingHistoryItem({
                     type: 'gemini_content',

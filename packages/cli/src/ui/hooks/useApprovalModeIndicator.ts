@@ -18,7 +18,7 @@ import { MessageType, type HistoryItemWithoutId } from '../types.js';
 export interface UseApprovalModeIndicatorArgs {
   config: Config;
   addItem?: (item: HistoryItemWithoutId, timestamp: number) => void;
-  onApprovalModeChange?: (mode: ApprovalMode) => void;
+  onApprovalModeChange?: (mode: ApprovalMode) => void | Promise<void>;
   isActive?: boolean;
 }
 
@@ -27,14 +27,21 @@ export function useApprovalModeIndicator({
   addItem,
   onApprovalModeChange,
   isActive = true,
-}: UseApprovalModeIndicatorArgs): ApprovalMode {
+}: UseApprovalModeIndicatorArgs): {
+  mode: ApprovalMode;
+  pending: ApprovalMode | null;
+} {
   const keyMatchers = useKeyMatchers();
   const currentConfigValue = config.getApprovalMode();
   const [showApprovalMode, setApprovalMode] = useState(currentConfigValue);
+  // 后端确认中：UI 保持旧档 + spinner，确认成功才变更（失败回滚并提示）。
+  const [pendingMode, setPendingMode] = useState<ApprovalMode | null>(null);
 
   useEffect(() => {
-    setApprovalMode(currentConfigValue);
-  }, [currentConfigValue]);
+    // pending 期间 config 本地值是"暂存"(守卫先行+确认后生效),显示不跟随;
+    // 待确认/回滚落定后再同步,外部变更也顺延到空闲时生效。
+    if (pendingMode === null) setApprovalMode(currentConfigValue);
+  }, [currentConfigValue, pendingMode]);
 
   useKeypress(
     (key) => {
@@ -89,14 +96,11 @@ export function useApprovalModeIndicator({
         }
       }
 
-      if (nextApprovalMode) {
+      if (nextApprovalMode && !pendingMode) {
+        // 同步策略守卫（不可信目录/禁特权档）先于任何后端交互；
+        // 抛错原文提示，档位不变。
         try {
           config.setApprovalMode(nextApprovalMode);
-          // Update local state immediately for responsiveness
-          setApprovalMode(nextApprovalMode);
-
-          // Notify the central handler about the approval mode change
-          onApprovalModeChange?.(nextApprovalMode);
         } catch (e) {
           if (addItem) {
             addItem(
@@ -108,11 +112,37 @@ export function useApprovalModeIndicator({
               Date.now(),
             );
           }
+          return;
         }
+        const previous = showApprovalMode;
+        setPendingMode(nextApprovalMode);
+        void (async () => {
+          try {
+            // PUT 落库确认；显示在确认后才变更
+            await Promise.resolve(onApprovalModeChange?.(nextApprovalMode));
+            setApprovalMode(nextApprovalMode);
+          } catch (e) {
+            // 落库失败：回滚本地 config 与显示
+            config.setApprovalMode(previous);
+            if (addItem) {
+              addItem(
+                {
+                  type: MessageType.ERROR,
+                  text: `Approval mode switch failed, keeping ${previous}: ${
+                    e instanceof Error ? e.message : String(e)
+                  }`,
+                },
+                Date.now(),
+              );
+            }
+          } finally {
+            setPendingMode(null);
+          }
+        })();
       }
     },
     { isActive },
   );
 
-  return showApprovalMode;
+  return { mode: showApprovalMode, pending: pendingMode };
 }

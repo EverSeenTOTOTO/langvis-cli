@@ -146,7 +146,7 @@ describe('useApprovalModeIndicator', () => {
         addItem: vi.fn(),
       }),
     );
-    expect(result.current).toBe(ApprovalMode.AUTO_EDIT);
+    expect(result.current.mode).toBe(ApprovalMode.AUTO_EDIT);
     expect(mockConfigInstance.getApprovalMode).toHaveBeenCalledTimes(1);
   });
 
@@ -158,7 +158,7 @@ describe('useApprovalModeIndicator', () => {
         addItem: vi.fn(),
       }),
     );
-    expect(result.current).toBe(ApprovalMode.DEFAULT);
+    expect(result.current.mode).toBe(ApprovalMode.DEFAULT);
     expect(mockConfigInstance.getApprovalMode).toHaveBeenCalledTimes(1);
   });
 
@@ -170,7 +170,7 @@ describe('useApprovalModeIndicator', () => {
         addItem: vi.fn(),
       }),
     );
-    expect(result.current).toBe(ApprovalMode.YOLO);
+    expect(result.current.mode).toBe(ApprovalMode.YOLO);
     expect(mockConfigInstance.getApprovalMode).toHaveBeenCalledTimes(1);
   });
 
@@ -182,10 +182,10 @@ describe('useApprovalModeIndicator', () => {
         addItem: vi.fn(),
       }),
     );
-    expect(result.current).toBe(ApprovalMode.DEFAULT);
+    expect(result.current.mode).toBe(ApprovalMode.DEFAULT);
 
     // Shift+Tab cycles to AUTO_EDIT
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({
         name: 'tab',
         shift: true,
@@ -194,18 +194,18 @@ describe('useApprovalModeIndicator', () => {
     expect(mockConfigInstance.setApprovalMode).toHaveBeenCalledWith(
       ApprovalMode.AUTO_EDIT,
     );
-    expect(result.current).toBe(ApprovalMode.AUTO_EDIT);
+    expect(result.current.mode).toBe(ApprovalMode.AUTO_EDIT);
 
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({ name: 'y', ctrl: true } as Key);
     });
     expect(mockConfigInstance.setApprovalMode).toHaveBeenCalledWith(
       ApprovalMode.YOLO,
     );
-    expect(result.current).toBe(ApprovalMode.YOLO);
+    expect(result.current.mode).toBe(ApprovalMode.YOLO);
 
     // Shift+Tab cycles back to DEFAULT (from YOLO) — langvis 三档循环
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({
         name: 'tab',
         shift: true,
@@ -214,19 +214,19 @@ describe('useApprovalModeIndicator', () => {
     expect(mockConfigInstance.setApprovalMode).toHaveBeenCalledWith(
       ApprovalMode.DEFAULT,
     );
-    expect(result.current).toBe(ApprovalMode.DEFAULT);
+    expect(result.current.mode).toBe(ApprovalMode.DEFAULT);
 
     // Ctrl+Y toggles YOLO
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({ name: 'y', ctrl: true } as Key);
     });
     expect(mockConfigInstance.setApprovalMode).toHaveBeenCalledWith(
       ApprovalMode.YOLO,
     );
-    expect(result.current).toBe(ApprovalMode.YOLO);
+    expect(result.current.mode).toBe(ApprovalMode.YOLO);
 
     // Shift+Tab from YOLO → DEFAULT（langvis 三档循环）
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({
         name: 'tab',
         shift: true,
@@ -235,7 +235,7 @@ describe('useApprovalModeIndicator', () => {
     expect(mockConfigInstance.setApprovalMode).toHaveBeenCalledWith(
       ApprovalMode.DEFAULT,
     );
-    expect(result.current).toBe(ApprovalMode.DEFAULT);
+    expect(result.current.mode).toBe(ApprovalMode.DEFAULT);
   });
 
   it('should not toggle if only one key or other keys combinations are pressed', async () => {
@@ -247,7 +247,7 @@ describe('useApprovalModeIndicator', () => {
       }),
     );
 
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({
         name: 'tab',
         shift: false,
@@ -255,7 +255,7 @@ describe('useApprovalModeIndicator', () => {
     });
     expect(mockConfigInstance.setApprovalMode).not.toHaveBeenCalled();
 
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({
         name: 'unknown',
         shift: true,
@@ -263,7 +263,7 @@ describe('useApprovalModeIndicator', () => {
     });
     expect(mockConfigInstance.setApprovalMode).not.toHaveBeenCalled();
 
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({
         name: 'a',
         shift: false,
@@ -272,22 +272,22 @@ describe('useApprovalModeIndicator', () => {
     });
     expect(mockConfigInstance.setApprovalMode).not.toHaveBeenCalled();
 
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({ name: 'y', ctrl: false } as Key);
     });
     expect(mockConfigInstance.setApprovalMode).not.toHaveBeenCalled();
 
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({ name: 'a', ctrl: true } as Key);
     });
     expect(mockConfigInstance.setApprovalMode).not.toHaveBeenCalled();
 
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({ name: 'y', shift: true } as Key);
     });
     expect(mockConfigInstance.setApprovalMode).not.toHaveBeenCalled();
 
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({
         name: 'a',
         shift: true,
@@ -309,7 +309,7 @@ describe('useApprovalModeIndicator', () => {
         },
       },
     );
-    expect(result.current).toBe(ApprovalMode.DEFAULT);
+    expect(result.current.mode).toBe(ApprovalMode.DEFAULT);
 
     mockConfigInstance.getApprovalMode.mockReturnValue(ApprovalMode.AUTO_EDIT);
 
@@ -317,7 +317,7 @@ describe('useApprovalModeIndicator', () => {
       config: mockConfigInstance as unknown as ActualConfigType,
       addItem: vi.fn(),
     });
-    expect(result.current).toBe(ApprovalMode.AUTO_EDIT);
+    expect(result.current.mode).toBe(ApprovalMode.AUTO_EDIT);
     expect(mockConfigInstance.getApprovalMode).toHaveBeenCalledTimes(3);
   });
 
@@ -341,9 +341,9 @@ describe('useApprovalModeIndicator', () => {
         }),
       );
 
-      expect(result.current).toBe(ApprovalMode.DEFAULT);
+      expect(result.current.mode).toBe(ApprovalMode.DEFAULT);
 
-      act(() => {
+      await act(async () => {
         capturedUseKeypressHandler({ name: 'y', ctrl: true } as Key);
       });
 
@@ -371,9 +371,9 @@ describe('useApprovalModeIndicator', () => {
         }),
       );
 
-      expect(result.current).toBe(ApprovalMode.DEFAULT);
+      expect(result.current.mode).toBe(ApprovalMode.DEFAULT);
 
-      act(() => {
+      await act(async () => {
         capturedUseKeypressHandler({
           name: 'tab',
           shift: true,
@@ -399,7 +399,7 @@ describe('useApprovalModeIndicator', () => {
         }),
       );
 
-      act(() => {
+      await act(async () => {
         capturedUseKeypressHandler({ name: 'y', ctrl: true } as Key);
       });
 
@@ -423,7 +423,7 @@ describe('useApprovalModeIndicator', () => {
         }),
       );
 
-      act(() => {
+      await act(async () => {
         capturedUseKeypressHandler({
           name: 'tab',
           shift: true,
@@ -453,7 +453,7 @@ describe('useApprovalModeIndicator', () => {
       );
 
       // Try to enable YOLO mode
-      act(() => {
+      await act(async () => {
         capturedUseKeypressHandler({ name: 'y', ctrl: true } as Key);
       });
 
@@ -466,7 +466,7 @@ describe('useApprovalModeIndicator', () => {
       );
 
       // Try to enable AUTO_EDIT mode
-      act(() => {
+      await act(async () => {
         capturedUseKeypressHandler({
           name: 'tab',
           shift: true,
@@ -506,9 +506,9 @@ describe('useApprovalModeIndicator', () => {
         }),
       );
 
-      expect(result.current).toBe(ApprovalMode.DEFAULT);
+      expect(result.current.mode).toBe(ApprovalMode.DEFAULT);
 
-      act(() => {
+      await act(async () => {
         capturedUseKeypressHandler({ name: 'y', ctrl: true } as Key);
       });
 
@@ -523,7 +523,7 @@ describe('useApprovalModeIndicator', () => {
         expect.any(Number),
       );
       // The mode should not change
-      expect(result.current).toBe(ApprovalMode.DEFAULT);
+      expect(result.current.mode).toBe(ApprovalMode.DEFAULT);
     });
 
     it('should show admin error message when YOLO mode is disabled by admin', async () => {
@@ -540,7 +540,7 @@ describe('useApprovalModeIndicator', () => {
         }),
       );
 
-      act(() => {
+      await act(async () => {
         capturedUseKeypressHandler({ name: 'y', ctrl: true } as Key);
       });
 
@@ -565,7 +565,7 @@ describe('useApprovalModeIndicator', () => {
         }),
       );
 
-      act(() => {
+      await act(async () => {
         capturedUseKeypressHandler({ name: 'y', ctrl: true } as Key);
       });
 
@@ -591,7 +591,7 @@ describe('useApprovalModeIndicator', () => {
       }),
     );
 
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({ name: 'y', ctrl: true } as Key);
     });
 
@@ -613,7 +613,7 @@ describe('useApprovalModeIndicator', () => {
       }),
     );
 
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({ name: 'tab', shift: true } as Key);
     });
 
@@ -637,7 +637,7 @@ describe('useApprovalModeIndicator', () => {
       }),
     );
 
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({ name: 'y', ctrl: true } as Key); // This should toggle from YOLO to DEFAULT
     });
 
@@ -656,7 +656,7 @@ describe('useApprovalModeIndicator', () => {
       }),
     );
 
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({ name: 'y', ctrl: true } as Key);
     });
 
@@ -679,12 +679,12 @@ describe('useApprovalModeIndicator', () => {
     );
 
     // Switch to YOLO
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({ name: 'y', ctrl: true } as Key);
     });
 
     // Switch to AUTO_EDIT — 从 YOLO 起步，shift+tab 落 DEFAULT 后再进 AUTO_EDIT
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({ name: 'tab', shift: true } as Key);
     });
 
@@ -699,6 +699,63 @@ describe('useApprovalModeIndicator', () => {
     );
   });
 
+  it('should keep the previous mode and roll back config when the backend PUT fails', async () => {
+    mockConfigInstance.getApprovalMode.mockReturnValue(ApprovalMode.DEFAULT);
+    const mockAddItem = vi.fn();
+    const onApprovalModeChange = vi
+      .fn()
+      .mockRejectedValue(new Error('network down'));
+    const { result } = await renderHook(() =>
+      useApprovalModeIndicator({
+        config: mockConfigInstance as unknown as ActualConfigType,
+        addItem: mockAddItem,
+        onApprovalModeChange,
+      }),
+    );
+
+    await act(async () => {
+      capturedUseKeypressHandler({ name: 'tab', shift: true } as Key);
+    });
+
+    // 确认前 spinner,失败后回滚:显示与 config 均保持旧档
+    expect(result.current.mode).toBe(ApprovalMode.DEFAULT);
+    expect(result.current.pending).toBeNull();
+    expect(mockConfigInstance.getApprovalMode()).toBe(ApprovalMode.DEFAULT);
+    expect(mockAddItem).toHaveBeenCalledWith(
+      expect.objectContaining({ type: MessageType.ERROR }),
+      expect.any(Number),
+    );
+  });
+
+  it('should expose pending mode during the in-flight switch', async () => {
+    mockConfigInstance.getApprovalMode.mockReturnValue(ApprovalMode.DEFAULT);
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const onApprovalModeChange = vi.fn().mockReturnValue(gate);
+    const { result } = await renderHook(() =>
+      useApprovalModeIndicator({
+        config: mockConfigInstance as unknown as ActualConfigType,
+        addItem: vi.fn(),
+        onApprovalModeChange,
+      }),
+    );
+
+    let settled: Promise<void> | undefined;
+    await act(async () => {
+      capturedUseKeypressHandler({ name: 'tab', shift: true } as Key);
+      settled = Promise.resolve();
+    });
+    // PUT 未决:pending 暴露目标档,显示保持旧档
+    expect(result.current.pending).toBe(ApprovalMode.AUTO_EDIT);
+    expect(result.current.mode).toBe(ApprovalMode.DEFAULT);
+    await act(async () => {
+      release();
+      await settled;
+    });
+    expect(result.current.pending).toBeNull();
+    expect(result.current.mode).toBe(ApprovalMode.AUTO_EDIT);
+  });
+
   it('should cycle AUTO_EDIT -> YOLO（langvis 三档：default → auto → yolo）', async () => {
     mockConfigInstance.getApprovalMode.mockReturnValue(ApprovalMode.AUTO_EDIT);
 
@@ -709,7 +766,7 @@ describe('useApprovalModeIndicator', () => {
       }),
     );
 
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({ name: 'tab', shift: true } as Key);
     });
     expect(mockConfigInstance.setApprovalMode).toHaveBeenCalledWith(
@@ -727,7 +784,7 @@ describe('useApprovalModeIndicator', () => {
       }),
     );
 
-    act(() => {
+    await act(async () => {
       capturedUseKeypressHandler({ name: 'tab', shift: true } as Key);
     });
     expect(mockConfigInstance.setApprovalMode).toHaveBeenCalledWith(

@@ -94,7 +94,6 @@ import {
   getLangvisSkills,
 } from '../langvis/models.js';
 import { langvisClient } from '../langvis/agent-protocol.js';
-import { getErrorMessage } from '../utils/errors.js';
 import type { EnvironmentSanitizationConfig } from '../services/environmentSanitization.js';
 import {
   DEFAULT_FILE_FILTERING_OPTIONS,
@@ -980,36 +979,40 @@ export class Config {
     return true;
   }
 
-  setModel(newModel: string, _isTemporary: boolean = true): void {
+  // 落后端确认后才本地生效：调用方在 await 期间展示 spinner，失败上抛由调用方提示。
+  // 回声抑制：record 已是该模型（启动/换会话种子场景）时直接生效不回写。
+  async setModel(
+    newModel: string,
+    _isTemporary: boolean = true,
+  ): Promise<void> {
+    const conversation = getLangvisConversationRecord();
+    const current = (
+      conversation?.config as { model?: { modelId?: string } } | undefined
+    )?.model?.modelId;
+    if (!conversation || current === newModel) {
+      this.applyModelLocal(newModel);
+      return;
+    }
+    const merged = {
+      ...conversation.config,
+      model: {
+        ...(conversation.config as { model?: object }).model,
+        modelId: newModel,
+      },
+    };
+    await langvisClient.updateConversation({
+      ...conversation,
+      config: merged,
+    });
+    conversation.config = merged;
+    this.applyModelLocal(newModel);
+  }
+
+  private applyModelLocal(newModel: string): void {
     this.model = newModel;
     this._activeModel = newModel;
     this.onModelChange?.(newModel);
     coreEvents.emitModelChanged(newModel);
-    // 落后端：conversation config.model.modelId 全量 PUT（fire-and-forget）。
-    // 回声抑制：record 已是该模型（启动/换会话种子场景）时不回写。
-    const conversation = getLangvisConversationRecord();
-    if (conversation) {
-      const current = (
-        conversation.config as { model?: { modelId?: string } } | undefined
-      )?.model?.modelId;
-      if (current === newModel) return;
-      const merged = {
-        ...conversation.config,
-        model: {
-          ...(conversation.config as { model?: object }).model,
-          modelId: newModel,
-        },
-      };
-      conversation.config = merged;
-      void langvisClient
-        .updateConversation(conversation)
-        .catch((e: unknown) => {
-          coreEvents.emitFeedback(
-            'warning',
-            `langvis: failed persisting model selection: ${getErrorMessage(e)}`,
-          );
-        });
-    }
   }
 
   activateFallbackMode(model: string, _failedModel?: string): void {

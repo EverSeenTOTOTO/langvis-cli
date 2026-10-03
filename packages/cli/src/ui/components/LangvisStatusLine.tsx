@@ -16,9 +16,11 @@ import { theme } from '../semantic-colors.js';
 import { useUIState } from '../contexts/UIStateContext.js';
 import { useSettings } from '../contexts/SettingsContext.js';
 import { getAllToolCalls } from '../utils/historyUtils.js';
+import { Spinner } from './Spinner.js';
 
 // 紧凑状态行（仿 claude-code statusline）：左对齐单行、│ 分段、超宽截断。
 // 取代上游 Footer/详情行（右对齐散布、条目间大片留白）。
+// 档位模式居首；用户邮箱完整保留，flex-end 贴最右。
 export const LangvisStatusLine: React.FC = () => {
   const uiState = useUIState();
   const settings = useSettings();
@@ -40,13 +42,32 @@ export const LangvisStatusLine: React.FC = () => {
 
   const parts: React.ReactNode[] = [];
 
-  if (settings.merged.ui.showUserIdentity && identity) {
-    parts.push(
-      <Text key="identity" color={theme.ui.comment}>
-        {identity}
-      </Text>,
-    );
-  }
+  const mode = uiState.showApprovalModeIndicator;
+  const modeText =
+    mode === ApprovalMode.YOLO
+      ? '⏵⏵⏵ yolo!'
+      : mode === ApprovalMode.AUTO_EDIT
+        ? '⏵⏵ auto'
+        : '⏸ default';
+  const modeColor =
+    mode === ApprovalMode.YOLO
+      ? theme.status.warning
+      : mode === ApprovalMode.AUTO_EDIT
+        ? theme.status.success
+        : theme.text.secondary;
+  parts.push(
+    <Text key="mode">
+      {uiState.approvalModePending ? (
+        // 切换与后端交互中：spinner + 目标档提示，确认后才变更显示
+        <Spinner label={`switching to ${uiState.approvalModePending}…`} />
+      ) : (
+        <Text color={modeColor} bold>
+          {modeText}
+        </Text>
+      )}
+      <Text color={theme.text.secondary}> (shift+tab)</Text>
+    </Text>,
+  );
 
   if (uiState.currentModel) {
     parts.push(
@@ -60,21 +81,21 @@ export const LangvisStatusLine: React.FC = () => {
   const record = getLangvisConversationRecord();
   const workspace = path.basename(record?.workspacePath || process.cwd());
   parts.push(
-    <Text key="cwd" color={theme.text.secondary}>
+    <Text key="cwd" color={theme.ui.focus}>
       {workspace}
       {uiState.branchName ? ' ' : ''}
     </Text>,
   );
   if (uiState.branchName) {
     parts.push(
-      <Text key="branch" color={theme.text.link}>
+      <Text key="branch" color={theme.status.warning}>
         git:({uiState.branchName})
       </Text>,
     );
   }
   if (record?.id) {
     parts.push(
-      <Text key="conv" color={theme.ui.comment}>
+      <Text key="conv" color={theme.text.link}>
         {record.id}
       </Text>,
     );
@@ -141,29 +162,9 @@ export const LangvisStatusLine: React.FC = () => {
     );
   }
 
-  const mode = uiState.showApprovalModeIndicator;
-  const modeText =
-    mode === ApprovalMode.YOLO
-      ? '⏵⏵⏵ yolo!'
-      : mode === ApprovalMode.AUTO_EDIT
-        ? '⏵⏵ auto'
-        : '⏸ default';
-  const modeColor =
-    mode === ApprovalMode.YOLO
-      ? theme.status.warning
-      : mode === ApprovalMode.AUTO_EDIT
-        ? theme.status.success
-        : theme.text.secondary;
-  parts.push(
-    <Text key="mode">
-      <Text color={modeColor} bold>
-        {modeText}
-      </Text>
-      <Text color={theme.text.secondary}> (shift+tab)</Text>
-    </Text>,
-  );
-
   return (
+    // 不设 width="100%"：与 marginLeft 叠加会溢出一列（margin 不计入百分比宽），
+    // 列容器里子行默认 stretch 满宽，margin 从可用宽内扣，行尾不被裁。
     <Box marginLeft={1}>
       {/* 窄终端换行展示（旧 wrap="truncate" 会截断隐藏尾段） */}
       <Text wrap="wrap">
@@ -174,6 +175,12 @@ export const LangvisStatusLine: React.FC = () => {
           </React.Fragment>
         ))}
       </Text>
+      <Box flexGrow={1} />
+      {settings.merged.ui.showUserIdentity && identity ? (
+        <Text key="identity" color={theme.ui.active}>
+          {identity}
+        </Text>
+      ) : null}
     </Box>
   );
 };

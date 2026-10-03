@@ -30,6 +30,7 @@ import {
 } from '@google/gemini-cli-core';
 import { useKeypress } from '../hooks/useKeypress.js';
 import { theme } from '../semantic-colors.js';
+import { Spinner } from './Spinner.js';
 import { DescriptiveRadioButtonSelect } from './shared/DescriptiveRadioButtonSelect.js';
 import { ConfigContext } from '../contexts/ConfigContext.js';
 import { useSettings } from '../contexts/SettingsContext.js';
@@ -324,21 +325,36 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
   }, [preferredModel, options, view]);
 
   // Handle selection internally (Autonomous Dialog).
+  // 切换与后端交互：期间 spinner，确认成功才关闭；失败留在对话框提示。
+  const [switchingTo, setSwitchingTo] = useState<string | null>(null);
+  const [switchError, setSwitchError] = useState<string | null>(null);
   const handleSelect = useCallback(
     (model: string) => {
       if (model === 'Manual') {
         setView('manual');
         return;
       }
-
-      if (config) {
-        config.setModel(model, persistMode ? false : true);
-        const event = new ModelSlashCommandEvent(model);
-        logModelSlashCommand(config, event);
-      }
-      onClose();
+      if (!config || switchingTo) return;
+      setSwitchError(null);
+      setSwitchingTo(model);
+      void (async () => {
+        try {
+          await config.setModel(model, persistMode ? false : true);
+          const event = new ModelSlashCommandEvent(model);
+          logModelSlashCommand(config, event);
+          onClose();
+        } catch (e) {
+          setSwitchError(
+            `Model switch failed: ${
+              e instanceof Error ? e.message : String(e)
+            }`,
+          );
+        } finally {
+          setSwitchingTo(null);
+        }
+      })();
     },
-    [config, onClose, persistMode],
+    [config, onClose, persistMode, switchingTo],
   );
 
   return (
@@ -359,6 +375,16 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
           showNumbers={true}
         />
       </Box>
+      {switchingTo ? (
+        <Box marginTop={1}>
+          <Spinner label={`switching to ${switchingTo}…`} />
+        </Box>
+      ) : null}
+      {switchError ? (
+        <Box marginTop={1}>
+          <Text color={theme.status.error}>{switchError}</Text>
+        </Box>
+      ) : null}
       <Box marginTop={1} flexDirection="column">
         <Box>
           <Text bold color={theme.text.primary}>

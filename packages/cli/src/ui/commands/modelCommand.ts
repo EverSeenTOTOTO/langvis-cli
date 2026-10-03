@@ -35,14 +35,27 @@ const setModelCommand: SlashCommand = {
     const persist = parts.includes('--persist');
 
     if (context.services.agentContext?.config) {
-      context.services.agentContext.config.setModel(modelName, !persist);
-      const event = new ModelSlashCommandEvent(modelName);
-      logModelSlashCommand(context.services.agentContext.config, event);
-
+      const config = context.services.agentContext.config;
       context.ui.addItem({
         type: MessageType.INFO,
-        text: `Model set to ${modelName}${persist ? ' (persisted)' : ''}`,
+        text: `Switching to ${modelName}…`,
       });
+      try {
+        await config.setModel(modelName, !persist);
+        const event = new ModelSlashCommandEvent(modelName);
+        logModelSlashCommand(config, event);
+        context.ui.addItem({
+          type: MessageType.INFO,
+          text: `Model set to ${modelName}${persist ? ' (persisted)' : ''}`,
+        });
+      } catch (e) {
+        context.ui.addItem({
+          type: MessageType.ERROR,
+          text: `Model switch failed: ${
+            e instanceof Error ? e.message : String(e)
+          }`,
+        });
+      }
     }
   },
 };

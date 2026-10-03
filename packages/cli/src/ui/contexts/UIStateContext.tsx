@@ -160,6 +160,8 @@ export interface UIState {
   messageQueue: string[];
   queueErrorMessage: string | null;
   showApprovalModeIndicator: ApprovalMode;
+  /** 审批档位切换与后端交互中（状态栏 spinner；null=空闲）。 */
+  approvalModePending: ApprovalMode | null;
   allowPlanMode: boolean;
   currentModel: string;
   conversationUsage: { used: number; total: number } | null;
